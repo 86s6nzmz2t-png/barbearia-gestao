@@ -292,16 +292,16 @@ function CaixaPage() {
                           <Button
                             size="icon"
                             variant="ghost"
-                            onClick={() =>
-                              setEditing(t) ||
+                            onClick={() => {
+                              setEditing(t);
                               setForm({
                                 amount: String(t.amount).replace(".", ","),
                                 service: t.service,
                                 payment_method: t.payment_method,
                                 client_id: t.client_id ?? "none",
                                 date: t.date,
-                              })
-                            }
+                              });
+                            }}
                           >
                             <Pencil className="h-4 w-4" />
                           </Button>
