@@ -1,10 +1,11 @@
-// Taxas por forma de pagamento (editáveis aqui)
+// Formas de pagamento (Dinheiro, Pix, Cartão)
 export const PAYMENT_METHODS = [
-  { value: "pix", label: "Pix", fee: 0 },
-  { value: "dinheiro", label: "Dinheiro", fee: 0 },
-  { value: "cartao_debito", label: "Cartão de Débito", fee: 0.0199 },
-  { value: "cartao_credito", label: "Cartão de Crédito", fee: 0.0349 },
+  { value: "dinheiro", label: "Dinheiro" },
+  { value: "pix", label: "Pix" },
+  { value: "cartao", label: "Cartão" },
 ] as const;
+
+export const DEFAULT_CARD_FEE = 3; // % padrão para Cartão
 
 export const SERVICES = [
   { value: "cabelo", label: "Cabelo" },
@@ -15,10 +16,17 @@ export const SERVICES = [
   { value: "outro", label: "Outro" },
 ] as const;
 
-export function computeNet(amount: number, method: string): number {
-  const m = PAYMENT_METHODS.find((p) => p.value === method);
-  const fee = m?.fee ?? 0;
-  return Math.round(amount * (1 - fee) * 100) / 100;
+export function isCard(method: string) {
+  return method === "cartao";
+}
+
+export function effectiveFeePercent(method: string, feePercent: number): number {
+  return isCard(method) ? (Number.isFinite(feePercent) ? feePercent : 0) : 0;
+}
+
+export function computeNet(amount: number, method: string, feePercent: number): number {
+  const fee = effectiveFeePercent(method, feePercent);
+  return Math.round(amount * (1 - fee / 100) * 100) / 100;
 }
 
 export function paymentLabel(value: string): string {

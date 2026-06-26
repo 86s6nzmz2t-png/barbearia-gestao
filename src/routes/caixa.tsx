@@ -45,10 +45,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/app-shell";
 import {
+  DEFAULT_CARD_FEE,
   PAYMENT_METHODS,
   SERVICES,
   brl,
   computeNet,
+  effectiveFeePercent,
+  isCard,
   paymentLabel,
   serviceLabel,
 } from "@/lib/finance";
@@ -67,6 +70,7 @@ type TxRow = {
   id: string;
   amount: number;
   net_amount: number;
+  fee_percent: number;
   service: string;
   payment_method: string;
   client_id: string | null;
@@ -78,6 +82,7 @@ type FormState = {
   amount: string;
   service: string;
   payment_method: string;
+  fee_percent: string;
   client_id: string;
   date: string;
 };
@@ -85,10 +90,15 @@ type FormState = {
 const emptyForm = (): FormState => ({
   amount: "",
   service: "cabelo",
-  payment_method: "pix",
+  payment_method: "dinheiro",
+  fee_percent: String(DEFAULT_CARD_FEE),
   client_id: "none",
   date: format(new Date(), "yyyy-MM-dd"),
 });
+
+function parseNum(v: string) {
+  return parseFloat(v.replace(",", "."));
+}
 
 function CaixaPage() {
   const qc = useQueryClient();
@@ -123,18 +133,24 @@ function CaixaPage() {
     qc.invalidateQueries({ queryKey: ["transactions"] });
   };
 
+  const buildPayload = (f: FormState) => {
+    const amount = parseNum(f.amount);
+    if (!amount || amount <= 0) throw new Error("Informe um valor válido.");
+    const feePercent = effectiveFeePercent(f.payment_method, parseNum(f.fee_percent) || 0);
+    return {
+      amount,
+      net_amount: computeNet(amount, f.payment_method, feePercent),
+      fee_percent: feePercent,
+      service: f.service,
+      payment_method: f.payment_method,
+      client_id: f.client_id === "none" ? null : f.client_id,
+      date: f.date,
+    };
+  };
+
   const createMut = useMutation({
     mutationFn: async (f: FormState) => {
-      const amount = parseFloat(f.amount.replace(",", "."));
-      if (!amount || amount <= 0) throw new Error("Informe um valor válido.");
-      const { error } = await supabase.from("transactions").insert({
-        amount,
-        net_amount: computeNet(amount, f.payment_method),
-        service: f.service,
-        payment_method: f.payment_method,
-        client_id: f.client_id === "none" ? null : f.client_id,
-        date: f.date,
-      });
+      const { error } = await supabase.from("transactions").insert(buildPayload(f));
       if (error) throw error;
     },
     onSuccess: () => {
@@ -147,19 +163,7 @@ function CaixaPage() {
 
   const updateMut = useMutation({
     mutationFn: async ({ id, f }: { id: string; f: FormState }) => {
-      const amount = parseFloat(f.amount.replace(",", "."));
-      if (!amount || amount <= 0) throw new Error("Informe um valor válido.");
-      const { error } = await supabase
-        .from("transactions")
-        .update({
-          amount,
-          net_amount: computeNet(amount, f.payment_method),
-          service: f.service,
-          payment_method: f.payment_method,
-          client_id: f.client_id === "none" ? null : f.client_id,
-          date: f.date,
-        })
-        .eq("id", id);
+      const { error } = await supabase.from("transactions").update(buildPayload(f)).eq("id", id);
       if (error) throw error;
     },
     onSuccess: () => {
@@ -182,6 +186,11 @@ function CaixaPage() {
     },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const showFee = isCard(form.payment_method);
+  const previewAmount = parseNum(form.amount) || 0;
+  const previewFee = effectiveFeePercent(form.payment_method, parseNum(form.fee_percent) || 0);
+  const previewNet = previewAmount > 0 ? computeNet(previewAmount, form.payment_method, previewFee) : 0;
 
   return (
     <div className="max-w-7xl mx-auto px-5 md:px-10 py-8 md:py-12">
@@ -220,7 +229,7 @@ function CaixaPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <Field className="md:col-span-3" label="Pagamento">
+            <Field className="md:col-span-2" label="Pagamento">
               <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -230,6 +239,17 @@ function CaixaPage() {
                 </SelectContent>
               </Select>
             </Field>
+            {showFee ? (
+              <Field className="md:col-span-1" label="Taxa %">
+                <Input
+                  inputMode="decimal"
+                  value={form.fee_percent}
+                  onChange={(e) => setForm({ ...form, fee_percent: e.target.value })}
+                />
+              </Field>
+            ) : (
+              <div className="hidden md:block md:col-span-1" />
+            )}
             <Field className="md:col-span-2" label="Data">
               <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
             </Field>
@@ -244,7 +264,12 @@ function CaixaPage() {
                 </SelectContent>
               </Select>
             </Field>
-            <div className="md:col-span-12 flex justify-end pt-1">
+            <div className="md:col-span-12 flex items-center justify-between pt-1">
+              <p className="text-xs text-muted-foreground">
+                {showFee
+                  ? `Líquido estimado: ${brl(previewNet)} (taxa ${previewFee}%)`
+                  : "Sem taxa — líquido = bruto"}
+              </p>
               <Button type="submit" disabled={createMut.isPending} className="bg-gold text-primary-foreground hover:bg-gold/90">
                 {createMut.isPending ? "Salvando..." : "Registrar"}
               </Button>
@@ -266,6 +291,7 @@ function CaixaPage() {
                   <TableHead>Serviço</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Pagamento</TableHead>
+                  <TableHead className="text-right">Taxa</TableHead>
                   <TableHead className="text-right">Bruto</TableHead>
                   <TableHead className="text-right">Líquido</TableHead>
                   <TableHead className="w-24"></TableHead>
@@ -273,9 +299,9 @@ function CaixaPage() {
               </TableHeader>
               <TableBody>
                 {isLoading ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
                 ) : transactions.length === 0 ? (
-                  <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhum lançamento ainda.</TableCell></TableRow>
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum lançamento ainda.</TableCell></TableRow>
                 ) : (
                   transactions.map((t) => (
                     <TableRow key={t.id}>
@@ -285,6 +311,9 @@ function CaixaPage() {
                       <TableCell>{serviceLabel(t.service)}</TableCell>
                       <TableCell className="text-muted-foreground">{t.client?.name ?? "—"}</TableCell>
                       <TableCell><span className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">{paymentLabel(t.payment_method)}</span></TableCell>
+                      <TableCell className="text-right tabular-nums text-muted-foreground">
+                        {Number(t.fee_percent) > 0 ? `${Number(t.fee_percent)}%` : "—"}
+                      </TableCell>
                       <TableCell className="text-right tabular-nums">{brl(Number(t.amount))}</TableCell>
                       <TableCell className="text-right tabular-nums text-gold">{brl(Number(t.net_amount))}</TableCell>
                       <TableCell>
@@ -298,6 +327,7 @@ function CaixaPage() {
                                 amount: String(t.amount).replace(".", ","),
                                 service: t.service,
                                 payment_method: t.payment_method,
+                                fee_percent: String(t.fee_percent ?? DEFAULT_CARD_FEE),
                                 client_id: t.client_id ?? "none",
                                 date: t.date,
                               });
@@ -346,6 +376,15 @@ function CaixaPage() {
                 </SelectContent>
               </Select>
             </Field>
+            {isCard(form.payment_method) && (
+              <Field label="Taxa (%)">
+                <Input
+                  inputMode="decimal"
+                  value={form.fee_percent}
+                  onChange={(e) => setForm({ ...form, fee_percent: e.target.value })}
+                />
+              </Field>
+            )}
             <Field className="col-span-2" label="Cliente">
               <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
