@@ -141,7 +141,7 @@ function CaixaPage() {
     },
     onSuccess: () => {
       toast.success("Lançamento registrado");
-      setForm(emptyForm(defaultCardFee));
+      setForm(emptyForm());
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -228,7 +228,7 @@ function CaixaPage() {
             <Field className="md:col-span-2" label="Pagamento">
               <Select
                 value={form.payment_method}
-                onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultCardFee) })}
+                onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultFeeFor(v, cardFees)) })}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -318,7 +318,7 @@ function CaixaPage() {
                             amount: String(t.amount).replace(".", ","),
                             service: t.service,
                             payment_method: t.payment_method,
-                            fee_percent: String(t.fee_percent ?? defaultCardFee),
+                            fee_percent: String(t.fee_percent ?? defaultFeeFor(t.payment_method, cardFees)),
                             client_id: t.client_id ?? "none",
                             date: t.date,
                           });
