@@ -47,6 +47,7 @@ export type Database = {
           client_id: string | null
           created_at: string
           date: string
+          fee_percent: number
           id: string
           net_amount: number
           payment_method: string
@@ -57,6 +58,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           date?: string
+          fee_percent?: number
           id?: string
           net_amount: number
           payment_method: string
@@ -67,6 +69,7 @@ export type Database = {
           client_id?: string | null
           created_at?: string
           date?: string
+          fee_percent?: number
           id?: string
           net_amount?: number
           payment_method?: string
