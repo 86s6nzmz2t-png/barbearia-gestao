@@ -27,9 +27,9 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { CashSessionBanner, useCashSessionGate } from "@/components/cash-session-banner";
 import {
-  PAYMENT_METHODS, brl, computeNet, effectiveFeePercent, isCard, paymentLabel,
+  PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
-import { useDefaultCardFee, useServices } from "@/lib/queries";
+import { useCardFees, useServices } from "@/lib/queries";
 
 export const Route = createFileRoute("/caixa")({
   head: () => ({
@@ -63,12 +63,12 @@ type FormState = {
   date: string;
 };
 
-function emptyForm(defaultFee: number): FormState {
+function emptyForm(): FormState {
   return {
     amount: "",
     service: "",
     payment_method: "dinheiro",
-    fee_percent: String(defaultFee),
+    fee_percent: "0",
     client_id: "none",
     date: format(new Date(), "yyyy-MM-dd"),
   };
@@ -78,11 +78,11 @@ function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
 
 function CaixaPage() {
   const qc = useQueryClient();
-  const { fee: defaultCardFee } = useDefaultCardFee();
+  const cardFees = useCardFees();
   const { data: services = [] } = useServices();
   const { isOpen: cashOpen, session } = useCashSessionGate();
 
-  const [form, setForm] = useState<FormState>(() => emptyForm(defaultCardFee));
+  const [form, setForm] = useState<FormState>(() => emptyForm());
   const [editing, setEditing] = useState<TxRow | null>(null);
   const [deleting, setDeleting] = useState<TxRow | null>(null);
 
