@@ -32,30 +32,38 @@ function SettingsPage() {
   return (
     <div className="max-w-5xl mx-auto px-5 md:px-10 py-8 md:py-12 space-y-6">
       <PageHeader title="Configurações" subtitle="Defina taxas padrão e gerencie despesas fixas." />
-      <CardFeeSetting />
+      <CardFeesSetting />
       <ExpensesSection />
     </div>
   );
 }
 
-function CardFeeSetting() {
+function CardFeesSetting() {
   const qc = useQueryClient();
-  const { data } = useSetting("default_card_fee", "3");
-  const [value, setValue] = useState("3");
-  useEffect(() => { if (data !== undefined) setValue(String(data)); }, [data]);
+  const { data: creditData } = useSetting("default_credit_fee", "3");
+  const { data: debitData } = useSetting("default_debit_fee", "1.99");
+  const [credit, setCredit] = useState("3");
+  const [debit, setDebit] = useState("1.99");
+  useEffect(() => { if (creditData !== undefined) setCredit(String(creditData)); }, [creditData]);
+  useEffect(() => { if (debitData !== undefined) setDebit(String(debitData)); }, [debitData]);
 
   const save = useMutation({
-    mutationFn: async (v: string) => {
-      const num = parseFloat(v.replace(",", "."));
-      if (!Number.isFinite(num) || num < 0) throw new Error("Taxa inválida");
-      const { error } = await supabase
-        .from("settings")
-        .upsert({ key: "default_card_fee", value: String(num), updated_at: new Date().toISOString() });
+    mutationFn: async () => {
+      const c = parseFloat(credit.replace(",", "."));
+      const d = parseFloat(debit.replace(",", "."));
+      if (!Number.isFinite(c) || c < 0) throw new Error("Taxa de crédito inválida");
+      if (!Number.isFinite(d) || d < 0) throw new Error("Taxa de débito inválida");
+      const now = new Date().toISOString();
+      const { error } = await supabase.from("settings").upsert([
+        { key: "default_credit_fee", value: String(c), updated_at: now },
+        { key: "default_debit_fee", value: String(d), updated_at: now },
+      ]);
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Taxa padrão salva");
-      qc.invalidateQueries({ queryKey: ["setting", "default_card_fee"] });
+      toast.success("Taxas padrão salvas");
+      qc.invalidateQueries({ queryKey: ["setting", "default_credit_fee"] });
+      qc.invalidateQueries({ queryKey: ["setting", "default_debit_fee"] });
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -64,23 +72,29 @@ function CardFeeSetting() {
     <Card>
       <CardHeader>
         <CardTitle className="font-display text-xl font-medium flex items-center gap-2">
-          <Percent className="h-4 w-4 text-gold" /> Taxa Padrão do Cartão
+          <Percent className="h-4 w-4 text-gold" /> Taxas Padrão do Cartão
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <div className="flex items-end gap-3 max-w-sm">
-          <div className="flex-1">
-            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Taxa (%)</Label>
-            <Input inputMode="decimal" value={value} onChange={(e) => setValue(e.target.value)} />
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Taxa Crédito (%)</Label>
+            <Input inputMode="decimal" value={credit} onChange={(e) => setCredit(e.target.value)} />
           </div>
+          <div>
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Taxa Débito (%)</Label>
+            <Input inputMode="decimal" value={debit} onChange={(e) => setDebit(e.target.value)} />
+          </div>
+        </div>
+        <div className="mt-4">
           <Button
             disabled={save.isPending}
-            onClick={() => save.mutate(value)}
+            onClick={() => save.mutate()}
             className="bg-gold text-primary-foreground hover:bg-gold/90"
-          >Salvar</Button>
+          >Salvar taxas</Button>
         </div>
         <p className="text-xs text-muted-foreground mt-2">
-          Usada automaticamente quando "Cartão" for selecionado no fluxo de caixa.
+          Aplicadas automaticamente quando "Cartão de Crédito" ou "Cartão de Débito" forem selecionados no fluxo de caixa.
         </p>
       </CardContent>
     </Card>

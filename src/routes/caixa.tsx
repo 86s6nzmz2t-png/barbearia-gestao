@@ -27,9 +27,9 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { CashSessionBanner, useCashSessionGate } from "@/components/cash-session-banner";
 import {
-  PAYMENT_METHODS, brl, computeNet, effectiveFeePercent, isCard, paymentLabel,
+  PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
-import { useDefaultCardFee, useServices } from "@/lib/queries";
+import { useCardFees, useServices } from "@/lib/queries";
 
 export const Route = createFileRoute("/caixa")({
   head: () => ({
@@ -63,12 +63,12 @@ type FormState = {
   date: string;
 };
 
-function emptyForm(defaultFee: number): FormState {
+function emptyForm(): FormState {
   return {
     amount: "",
     service: "",
     payment_method: "dinheiro",
-    fee_percent: String(defaultFee),
+    fee_percent: "0",
     client_id: "none",
     date: format(new Date(), "yyyy-MM-dd"),
   };
@@ -78,11 +78,11 @@ function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
 
 function CaixaPage() {
   const qc = useQueryClient();
-  const { fee: defaultCardFee } = useDefaultCardFee();
+  const cardFees = useCardFees();
   const { data: services = [] } = useServices();
   const { isOpen: cashOpen, session } = useCashSessionGate();
 
-  const [form, setForm] = useState<FormState>(() => emptyForm(defaultCardFee));
+  const [form, setForm] = useState<FormState>(() => emptyForm());
   const [editing, setEditing] = useState<TxRow | null>(null);
   const [deleting, setDeleting] = useState<TxRow | null>(null);
 
@@ -141,7 +141,7 @@ function CaixaPage() {
     },
     onSuccess: () => {
       toast.success("Lançamento registrado");
-      setForm(emptyForm(defaultCardFee));
+      setForm(emptyForm());
       invalidate();
     },
     onError: (e: Error) => toast.error(e.message),
@@ -228,7 +228,7 @@ function CaixaPage() {
             <Field className="md:col-span-2" label="Pagamento">
               <Select
                 value={form.payment_method}
-                onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultCardFee) })}
+                onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultFeeFor(v, cardFees)) })}
               >
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -318,7 +318,7 @@ function CaixaPage() {
                             amount: String(t.amount).replace(".", ","),
                             service: t.service,
                             payment_method: t.payment_method,
-                            fee_percent: String(t.fee_percent ?? defaultCardFee),
+                            fee_percent: String(t.fee_percent ?? defaultFeeFor(t.payment_method, cardFees)),
                             client_id: t.client_id ?? "none",
                             date: t.date,
                           });
@@ -357,7 +357,7 @@ function CaixaPage() {
               </Select>
             </Field>
             <Field label="Pagamento">
-              <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
+              <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultFeeFor(v, cardFees)) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PAYMENT_METHODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
