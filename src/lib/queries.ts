@@ -58,9 +58,20 @@ export function useSetting(key: string, defaultValue = "") {
   });
 }
 
-export function useDefaultCardFee() {
-  const q = useSetting("default_card_fee", "3");
+export function useDefaultCreditFee() {
+  const q = useSetting("default_credit_fee", "3");
   return { ...q, fee: Number(q.data ?? 3) || 0 };
+}
+
+export function useDefaultDebitFee() {
+  const q = useSetting("default_debit_fee", "1.99");
+  return { ...q, fee: Number(q.data ?? 1.99) || 0 };
+}
+
+export function useCardFees() {
+  const credit = useDefaultCreditFee();
+  const debit = useDefaultDebitFee();
+  return { credit: credit.fee, debit: debit.fee };
 }
 
 export function useTodayCashSession() {
