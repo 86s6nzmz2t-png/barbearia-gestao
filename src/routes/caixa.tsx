@@ -357,7 +357,7 @@ function CaixaPage() {
               </Select>
             </Field>
             <Field label="Pagamento">
-              <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v })}>
+              <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultFeeFor(v, cardFees)) })}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {PAYMENT_METHODS.map((p) => <SelectItem key={p.value} value={p.value}>{p.label}</SelectItem>)}
