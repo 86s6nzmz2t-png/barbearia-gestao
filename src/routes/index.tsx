@@ -4,12 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TrendingUp, Wallet, Scissors, Receipt } from "lucide-react";
+import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { brl, paymentLabel, serviceLabel } from "@/lib/finance";
+import { brl, paymentLabel } from "@/lib/finance";
 import { PageHeader } from "@/components/app-shell";
 
 type Period = "diario" | "semanal" | "mensal";
@@ -54,11 +54,25 @@ function Dashboard() {
     },
   });
 
+  const { data: monthlyExpenses = 0 } = useQuery({
+    enabled: period === "mensal",
+    queryKey: ["expenses", "month", format(range.from, "yyyy-MM"), format(range.to, "yyyy-MM")],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("expenses")
+        .select("amount, due_date")
+        .gte("due_date", format(range.from, "yyyy-MM-dd"))
+        .lte("due_date", format(range.to, "yyyy-MM-dd"));
+      if (error) throw error;
+      return (data ?? []).reduce((s, e) => s + Number(e.amount), 0);
+    },
+  });
+
   const totals = useMemo(() => {
     const gross = transactions.reduce((s, t) => s + Number(t.amount), 0);
     const net = transactions.reduce((s, t) => s + Number(t.net_amount), 0);
-    return { gross, net, count: transactions.length };
-  }, [transactions]);
+    return { gross, net, count: transactions.length, profit: net - monthlyExpenses };
+  }, [transactions, monthlyExpenses]);
 
   const chartData = useMemo(() => {
     const buckets =
@@ -171,7 +185,7 @@ function Dashboard() {
                 <li key={t.id} className="py-3 flex items-center justify-between gap-4">
                   <div className="min-w-0">
                     <p className="text-sm font-medium truncate">
-                      {serviceLabel(t.service)}
+                      {t.service}
                       {t.client && <span className="text-muted-foreground"> · {(t.client as { name: string }).name}</span>}
                     </p>
                     <p className="text-xs text-muted-foreground">
