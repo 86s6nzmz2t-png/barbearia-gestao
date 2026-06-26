@@ -14,6 +14,42 @@ export type Database = {
   }
   public: {
     Tables: {
+      cash_sessions: {
+        Row: {
+          closed_at: string | null
+          counted_amount: number | null
+          created_at: string
+          date: string
+          difference: number | null
+          id: string
+          opened_at: string
+          opening_amount: number
+          status: string
+        }
+        Insert: {
+          closed_at?: string | null
+          counted_amount?: number | null
+          created_at?: string
+          date?: string
+          difference?: number | null
+          id?: string
+          opened_at?: string
+          opening_amount?: number
+          status?: string
+        }
+        Update: {
+          closed_at?: string | null
+          counted_amount?: number | null
+          created_at?: string
+          date?: string
+          difference?: number | null
+          id?: string
+          opened_at?: string
+          opening_amount?: number
+          status?: string
+        }
+        Relationships: []
+      }
       clients: {
         Row: {
           created_at: string
@@ -41,9 +77,73 @@ export type Database = {
         }
         Relationships: []
       }
+      expenses: {
+        Row: {
+          amount: number
+          created_at: string
+          description: string
+          due_date: string
+          id: string
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          description: string
+          due_date?: string
+          id?: string
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          description?: string
+          due_date?: string
+          id?: string
+        }
+        Relationships: []
+      }
+      services: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          price: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          price?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          price?: number
+        }
+        Relationships: []
+      }
+      settings: {
+        Row: {
+          key: string
+          updated_at: string
+          value: string
+        }
+        Insert: {
+          key: string
+          updated_at?: string
+          value: string
+        }
+        Update: {
+          key?: string
+          updated_at?: string
+          value?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount: number
+          cash_session_id: string | null
           client_id: string | null
           created_at: string
           date: string
@@ -55,6 +155,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          cash_session_id?: string | null
           client_id?: string | null
           created_at?: string
           date?: string
@@ -66,6 +167,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          cash_session_id?: string | null
           client_id?: string | null
           created_at?: string
           date?: string
@@ -76,6 +178,13 @@ export type Database = {
           service?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_cash_session_id_fkey"
+            columns: ["cash_session_id"]
+            isOneToOne: false
+            referencedRelation: "cash_sessions"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_client_id_fkey"
             columns: ["client_id"]

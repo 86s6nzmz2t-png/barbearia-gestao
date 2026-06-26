@@ -1,5 +1,5 @@
 import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Users, Scissors } from "lucide-react";
+import { LayoutDashboard, Wallet, Users, Scissors, Settings } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 
@@ -7,6 +7,8 @@ const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/caixa", label: "Caixa", icon: Wallet, exact: false },
   { to: "/clientes", label: "Clientes", icon: Users, exact: false },
+  { to: "/servicos", label: "Serviços", icon: Scissors, exact: false },
+  { to: "/configuracoes", label: "Config", icon: Settings, exact: false },
 ] as const;
 
 export function AppShell() {
@@ -65,7 +67,7 @@ export function AppShell() {
 
       {/* Bottom nav mobile */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur border-t border-sidebar-border">
-        <div className="grid grid-cols-3">
+        <div className="grid grid-cols-5">
           {nav.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to, item.exact);
