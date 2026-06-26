@@ -143,6 +143,24 @@ function Dashboard() {
         />
       </div>
 
+      {period === "mensal" && (
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
+          <StatCard
+            icon={<TrendingDown className="h-4 w-4" />}
+            label="Despesas Fixas do Mês"
+            value={brl(monthlyExpenses)}
+            loading={isLoading}
+          />
+          <StatCard
+            icon={<Wallet className="h-4 w-4" />}
+            label="Lucro Real Final do Mês"
+            value={brl(totals.profit)}
+            hint="Líquido − despesas fixas do período"
+            loading={isLoading}
+          />
+        </div>
+      )}
+
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="font-display text-xl font-medium">Evolução do faturamento</CardTitle>
