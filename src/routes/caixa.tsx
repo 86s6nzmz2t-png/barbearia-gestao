@@ -86,6 +86,7 @@ function CaixaPage() {
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [editing, setEditing] = useState<TxRow | null>(null);
   const [deleting, setDeleting] = useState<TxRow | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
