@@ -313,6 +313,7 @@ function ClientesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ClientHistoryDialog client={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
 }
