@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/app-shell";
+import { ClientHistoryDialog } from "@/components/client-history-dialog";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({
