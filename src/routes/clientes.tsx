@@ -216,7 +216,12 @@ function ClientesPage() {
                     <User className="h-5 w-5 text-gold" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-display text-lg leading-tight truncate">{c.name}</h3>
+                    <button
+                      onClick={() => setDetail(c)}
+                      className="font-display text-lg leading-tight truncate text-left hover:text-gold transition-colors"
+                    >
+                      {c.name}
+                    </button>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {c.phone || "—"}{c.whatsapp && ` · WA: ${c.whatsapp}`}
                     </p>
