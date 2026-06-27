@@ -419,6 +419,20 @@ function CaixaPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <QuickClientDialog
+        open={quickOpen}
+        onOpenChange={setQuickOpen}
+        onCreated={(c) => {
+          qc.setQueryData<{ id: string; name: string }[]>(["clients"], (prev) => {
+            const list = prev ?? [];
+            if (list.some((x) => x.id === c.id)) return list;
+            return [...list, c].sort((a, b) => a.name.localeCompare(b.name));
+          });
+          qc.invalidateQueries({ queryKey: ["clients"] });
+          setForm((prev) => ({ ...prev, client_id: c.id }));
+        }}
+      />
     </div>
   );
 }
