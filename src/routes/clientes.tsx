@@ -57,6 +57,7 @@ function ClientesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState<Client | null>(null);
+  const [detail, setDetail] = useState<Client | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients", "full"],
