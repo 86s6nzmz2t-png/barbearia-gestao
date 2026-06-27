@@ -253,13 +253,25 @@ function CaixaPage() {
               <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
             </Field>
             <Field className="md:col-span-2" label="Cliente">
-              <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Sem cliente —</SelectItem>
-                  {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1.5">
+                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem cliente —</SelectItem>
+                    {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="shrink-0 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold"
+                  onClick={() => setQuickOpen(true)}
+                  title="Cadastrar novo cliente"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </div>
             </Field>
             <div className="md:col-span-12 flex items-center justify-between pt-1">
               <p className="text-xs text-muted-foreground">
