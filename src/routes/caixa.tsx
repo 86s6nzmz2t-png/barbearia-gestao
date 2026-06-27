@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Lock, Pencil, Plus, Trash2 } from "lucide-react";
+import { Lock, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +26,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/app-shell";
 import { CashSessionBanner, useCashSessionGate } from "@/components/cash-session-banner";
+import { QuickClientDialog } from "@/components/quick-client-dialog";
 import {
   PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
@@ -85,6 +86,7 @@ function CaixaPage() {
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [editing, setEditing] = useState<TxRow | null>(null);
   const [deleting, setDeleting] = useState<TxRow | null>(null);
+  const [quickOpen, setQuickOpen] = useState(false);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -251,13 +253,25 @@ function CaixaPage() {
               <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
             </Field>
             <Field className="md:col-span-2" label="Cliente">
-              <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Sem cliente —</SelectItem>
-                  {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
-                </SelectContent>
-              </Select>
+              <div className="flex gap-1.5">
+                <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
+                  <SelectTrigger className="flex-1"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">— Sem cliente —</SelectItem>
+                    {clients.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
+                  </SelectContent>
+                </Select>
+                <Button
+                  type="button"
+                  size="icon"
+                  variant="outline"
+                  className="shrink-0 border-gold/40 text-gold hover:bg-gold/10 hover:text-gold"
+                  onClick={() => setQuickOpen(true)}
+                  title="Cadastrar novo cliente"
+                >
+                  <UserPlus className="h-4 w-4" />
+                </Button>
+              </div>
             </Field>
             <div className="md:col-span-12 flex items-center justify-between pt-1">
               <p className="text-xs text-muted-foreground">
@@ -405,6 +419,20 @@ function CaixaPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <QuickClientDialog
+        open={quickOpen}
+        onOpenChange={setQuickOpen}
+        onCreated={(c) => {
+          qc.setQueryData<{ id: string; name: string }[]>(["clients"], (prev) => {
+            const list = prev ?? [];
+            if (list.some((x) => x.id === c.id)) return list;
+            return [...list, c].sort((a, b) => a.name.localeCompare(b.name));
+          });
+          qc.invalidateQueries({ queryKey: ["clients"] });
+          setForm((prev) => ({ ...prev, client_id: c.id }));
+        }}
+      />
     </div>
   );
 }

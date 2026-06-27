@@ -28,6 +28,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/app-shell";
+import { ClientHistoryDialog } from "@/components/client-history-dialog";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({
@@ -56,6 +57,7 @@ function ClientesPage() {
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
   const [deleting, setDeleting] = useState<Client | null>(null);
+  const [detail, setDetail] = useState<Client | null>(null);
 
   const { data: clients = [], isLoading } = useQuery({
     queryKey: ["clients", "full"],
@@ -214,7 +216,12 @@ function ClientesPage() {
                     <User className="h-5 w-5 text-gold" />
                   </div>
                   <div className="min-w-0 flex-1">
-                    <h3 className="font-display text-lg leading-tight truncate">{c.name}</h3>
+                    <button
+                      onClick={() => setDetail(c)}
+                      className="font-display text-lg leading-tight truncate text-left hover:text-gold transition-colors"
+                    >
+                      {c.name}
+                    </button>
                     <p className="text-xs text-muted-foreground mt-0.5">
                       {c.phone || "—"}{c.whatsapp && ` · WA: ${c.whatsapp}`}
                     </p>
@@ -306,6 +313,7 @@ function ClientesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <ClientHistoryDialog client={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
 }
