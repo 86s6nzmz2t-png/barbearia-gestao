@@ -25,6 +25,7 @@ export type Database = {
           opened_at: string
           opening_amount: number
           status: string
+          user_id: string
         }
         Insert: {
           closed_at?: string | null
@@ -36,6 +37,7 @@ export type Database = {
           opened_at?: string
           opening_amount?: number
           status?: string
+          user_id: string
         }
         Update: {
           closed_at?: string | null
@@ -47,6 +49,7 @@ export type Database = {
           opened_at?: string
           opening_amount?: number
           status?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -57,6 +60,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string | null
+          user_id: string
           whatsapp: string | null
         }
         Insert: {
@@ -65,6 +69,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone?: string | null
+          user_id: string
           whatsapp?: string | null
         }
         Update: {
@@ -73,6 +78,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string | null
+          user_id?: string
           whatsapp?: string | null
         }
         Relationships: []
@@ -84,6 +90,7 @@ export type Database = {
           description: string
           due_date: string
           id: string
+          user_id: string
         }
         Insert: {
           amount?: number
@@ -91,6 +98,7 @@ export type Database = {
           description: string
           due_date?: string
           id?: string
+          user_id: string
         }
         Update: {
           amount?: number
@@ -98,6 +106,7 @@ export type Database = {
           description?: string
           due_date?: string
           id?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -107,35 +116,44 @@ export type Database = {
           id: string
           name: string
           price: number
+          user_id: string
         }
         Insert: {
           created_at?: string
           id?: string
           name: string
           price?: number
+          user_id: string
         }
         Update: {
           created_at?: string
           id?: string
           name?: string
           price?: number
+          user_id?: string
         }
         Relationships: []
       }
       settings: {
         Row: {
+          id: string
           key: string
           updated_at: string
+          user_id: string
           value: string
         }
         Insert: {
+          id?: string
           key: string
           updated_at?: string
+          user_id: string
           value: string
         }
         Update: {
+          id?: string
           key?: string
           updated_at?: string
+          user_id?: string
           value?: string
         }
         Relationships: []
@@ -152,6 +170,7 @@ export type Database = {
           net_amount: number
           payment_method: string
           service: string
+          user_id: string
         }
         Insert: {
           amount: number
@@ -164,6 +183,7 @@ export type Database = {
           net_amount: number
           payment_method: string
           service: string
+          user_id: string
         }
         Update: {
           amount?: number
@@ -176,6 +196,7 @@ export type Database = {
           net_amount?: number
           payment_method?: string
           service?: string
+          user_id?: string
         }
         Relationships: [
           {

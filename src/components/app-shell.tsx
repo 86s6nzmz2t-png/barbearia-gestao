@@ -1,7 +1,13 @@
-import { Link, Outlet, useRouterState } from "@tanstack/react-router";
-import { LayoutDashboard, Wallet, Users, Scissors, Settings, Heart } from "lucide-react";
+import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { LayoutDashboard, LogOut, Wallet, Users, Scissors, Settings, Heart } from "lucide-react";
+import { toast } from "sonner";
+
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/lib/auth";
+import { supabase } from "@/integrations/supabase/client";
 
 const nav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
@@ -14,6 +20,30 @@ const nav = [
 
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
+
+  const isAuthRoute = pathname === "/auth";
+
+  useEffect(() => {
+    if (loading) return;
+    if (!user && !isAuthRoute) navigate({ to: "/auth", replace: true });
+  }, [loading, user, isAuthRoute, navigate]);
+
+  if (isAuthRoute || !user) {
+    return (
+      <>
+        <Outlet />
+        <Toaster position="top-right" richColors />
+      </>
+    );
+  }
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    toast.success("Sessão encerrada");
+    navigate({ to: "/auth", replace: true });
+  };
 
   const isActive = (to: string, exact: boolean) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
@@ -27,9 +57,9 @@ export function AppShell() {
             <div className="h-10 w-10 rounded-md bg-gradient-to-br from-gold to-gold-muted flex items-center justify-center shadow-lg shadow-gold/10">
               <Scissors className="h-5 w-5 text-primary-foreground" strokeWidth={2.4} />
             </div>
-            <div>
+            <div className="min-w-0">
               <p className="font-display text-lg leading-tight text-foreground">Barbearia</p>
-              <p className="text-[11px] uppercase tracking-[0.18em] text-gold/80">Gestão</p>
+              <p className="text-[11px] uppercase tracking-[0.18em] text-gold/80 truncate">{user.email}</p>
             </div>
           </div>
         </div>
@@ -54,13 +84,30 @@ export function AppShell() {
             );
           })}
         </nav>
-        <div className="px-6 py-4 text-[11px] text-muted-foreground border-t border-sidebar-border">
-          v1.0 · feito sob medida
+        <div className="px-3 py-3 border-t border-sidebar-border">
+          <Button
+            variant="ghost"
+            onClick={handleLogout}
+            className="w-full justify-start text-sm text-muted-foreground hover:text-foreground"
+          >
+            <LogOut className="h-4 w-4 mr-2" /> Sair
+          </Button>
         </div>
       </aside>
 
       {/* Main */}
       <div className="flex-1 flex flex-col min-w-0">
+        <header className="md:hidden flex items-center justify-between px-5 py-3 border-b border-border bg-sidebar/80 backdrop-blur">
+          <div className="flex items-center gap-2">
+            <div className="h-8 w-8 rounded-md bg-gradient-to-br from-gold to-gold-muted flex items-center justify-center">
+              <Scissors className="h-4 w-4 text-primary-foreground" />
+            </div>
+            <span className="font-display text-base">Barbearia</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleLogout} className="text-muted-foreground">
+            <LogOut className="h-4 w-4" />
+          </Button>
+        </header>
         <main className="flex-1 pb-24 md:pb-8">
           <Outlet />
         </main>

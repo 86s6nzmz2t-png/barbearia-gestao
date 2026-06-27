@@ -5,6 +5,7 @@ import { Lock, LockOpen, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useUserId } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -19,6 +20,7 @@ function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
 
 export function CashSessionBanner({ cashInTotal }: { cashInTotal: number }) {
   const qc = useQueryClient();
+  const userId = useUserId();
   const { data: session, isLoading } = useTodayCashSession();
   const [openDialog, setOpenDialog] = useState(false);
   const [closeDialog, setCloseDialog] = useState(false);
@@ -38,6 +40,7 @@ export function CashSessionBanner({ cashInTotal }: { cashInTotal: number }) {
         date: format(new Date(), "yyyy-MM-dd"),
         opening_amount: amount,
         status: "open",
+        user_id: userId,
       });
       if (error) throw error;
     },
