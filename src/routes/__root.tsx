@@ -87,8 +87,8 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
       { name: "twitter:card", content: "summary" },
       { name: "twitter:title", content: "Barbearia — Gestão" },
       { name: "twitter:description", content: "App de gestão para barbearia: fluxo de caixa e controle de clientes." },
-      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ziQNo21wNoY1hwwZVqnlR1qQiaF2/social-images/social-1782491959239-app_barbearia.webp" },
-      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ziQNo21wNoY1hwwZVqnlR1qQiaF2/social-images/social-1782491959239-app_barbearia.webp" },
+      { property: "og:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ziQNo21wNoY1hwwZVqnlR1qQiaF2/social-images/social-1782566055137-capa_app.webp" },
+      { name: "twitter:image", content: "https://storage.googleapis.com/gpt-engineer-file-uploads/ziQNo21wNoY1hwwZVqnlR1qQiaF2/social-images/social-1782566055137-capa_app.webp" },
     ],
     links: [
       { rel: "preconnect", href: "https://fonts.googleapis.com" },
