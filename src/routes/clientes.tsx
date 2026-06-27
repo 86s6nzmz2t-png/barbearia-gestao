@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { PageHeader } from "@/components/app-shell";
 import { ClientHistoryDialog } from "@/components/client-history-dialog";
+import { useUserId } from "@/lib/auth";
 
 export const Route = createFileRoute("/clientes")({
   head: () => ({
@@ -53,6 +54,7 @@ const emptyForm = (): FormState => ({ name: "", phone: "", whatsapp: "", notes: 
 
 function ClientesPage() {
   const qc = useQueryClient();
+  const userId = useUserId();
   const [form, setForm] = useState<FormState>(emptyForm());
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Client | null>(null);
@@ -89,6 +91,7 @@ function ClientesPage() {
         phone: f.phone.trim() || null,
         whatsapp: f.whatsapp.trim() || null,
         notes: f.notes.trim() || null,
+        user_id: userId,
       });
       if (error) throw error;
     },

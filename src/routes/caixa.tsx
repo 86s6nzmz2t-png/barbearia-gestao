@@ -31,6 +31,7 @@ import {
   PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
 import { useCardFees, useServices } from "@/lib/queries";
+import { useUserId } from "@/lib/auth";
 
 export const Route = createFileRoute("/caixa")({
   head: () => ({
@@ -79,6 +80,7 @@ function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
 
 function CaixaPage() {
   const qc = useQueryClient();
+  const userId = useUserId();
   const cardFees = useCardFees();
   const { data: services = [] } = useServices();
   const { isOpen: cashOpen, session } = useCashSessionGate();
@@ -132,6 +134,7 @@ function CaixaPage() {
       client_id: f.client_id === "none" ? null : f.client_id,
       date: f.date,
       cash_session_id: session?.id ?? null,
+      user_id: userId,
     };
   };
 

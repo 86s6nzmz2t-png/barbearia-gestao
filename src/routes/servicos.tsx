@@ -22,6 +22,7 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { brl } from "@/lib/finance";
 import { useServices, type Service } from "@/lib/queries";
+import { useUserId } from "@/lib/auth";
 
 export const Route = createFileRoute("/servicos")({
   head: () => ({
@@ -40,6 +41,7 @@ function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
 
 function ServicesPage() {
   const qc = useQueryClient();
+  const userId = useUserId();
   const { data: services = [], isLoading } = useServices();
   const [form, setForm] = useState<FormState>(empty);
   const [editing, setEditing] = useState<Service | null>(null);
@@ -52,7 +54,7 @@ function ServicesPage() {
       const price = parseNum(f.price);
       if (!f.name.trim()) throw new Error("Nome obrigatório");
       if (!Number.isFinite(price) || price < 0) throw new Error("Preço inválido");
-      const { error } = await supabase.from("services").insert({ name: f.name.trim(), price });
+      const { error } = await supabase.from("services").insert({ name: f.name.trim(), price, user_id: userId });
       if (error) throw error;
     },
     onSuccess: () => { toast.success("Serviço cadastrado"); setForm(empty); invalidate(); },

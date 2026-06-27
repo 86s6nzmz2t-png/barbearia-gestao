@@ -3,6 +3,7 @@ import { useMutation } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
+import { useUserId } from "@/lib/auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +22,7 @@ export function QuickClientDialog({
   onOpenChange: (o: boolean) => void;
   onCreated: (client: QuickClient) => void;
 }) {
+  const userId = useUserId();
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
 
@@ -38,7 +40,7 @@ export function QuickClientDialog({
       const p = phone.trim() || null;
       const { data, error } = await supabase
         .from("clients")
-        .insert({ name: n, phone: p, whatsapp: p })
+        .insert({ name: n, phone: p, whatsapp: p, user_id: userId })
         .select("id, name")
         .single();
       if (error) throw error;

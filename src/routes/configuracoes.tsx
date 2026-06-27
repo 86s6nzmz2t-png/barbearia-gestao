@@ -17,6 +17,7 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { brl } from "@/lib/finance";
 import { useExpenses, useSetting } from "@/lib/queries";
+import { useUserId } from "@/lib/auth";
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
@@ -40,6 +41,7 @@ function SettingsPage() {
 
 function CardFeesSetting() {
   const qc = useQueryClient();
+  const userId = useUserId();
   const { data: creditData } = useSetting("default_credit_fee", "3");
   const { data: debitData } = useSetting("default_debit_fee", "1.99");
   const [credit, setCredit] = useState("3");
@@ -55,9 +57,9 @@ function CardFeesSetting() {
       if (!Number.isFinite(d) || d < 0) throw new Error("Taxa de débito inválida");
       const now = new Date().toISOString();
       const { error } = await supabase.from("settings").upsert([
-        { key: "default_credit_fee", value: String(c), updated_at: now },
-        { key: "default_debit_fee", value: String(d), updated_at: now },
-      ]);
+        { key: "default_credit_fee", value: String(c), updated_at: now, user_id: userId },
+        { key: "default_debit_fee", value: String(d), updated_at: now, user_id: userId },
+      ], { onConflict: "user_id,key" });
       if (error) throw error;
     },
     onSuccess: () => {
@@ -103,6 +105,7 @@ function CardFeesSetting() {
 
 function ExpensesSection() {
   const qc = useQueryClient();
+  const userId = useUserId();
   const { data: expenses = [], isLoading } = useExpenses();
   const [form, setForm] = useState({ description: "", amount: "", due_date: format(new Date(), "yyyy-MM-dd") });
 
@@ -112,7 +115,7 @@ function ExpensesSection() {
       if (!form.description.trim()) throw new Error("Descrição obrigatória");
       if (!Number.isFinite(amount) || amount <= 0) throw new Error("Valor inválido");
       const { error } = await supabase.from("expenses").insert({
-        description: form.description.trim(), amount, due_date: form.due_date,
+        description: form.description.trim(), amount, due_date: form.due_date, user_id: userId,
       });
       if (error) throw error;
     },
