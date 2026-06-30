@@ -52,7 +52,7 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
     mutationFn: async (s: CashSession) => {
       const countedNum = parseNum(counted);
       if (!Number.isFinite(countedNum)) throw new Error("Informe o valor contado");
-      const expected = Number(s.opening_amount) + cashInTotal;
+      const expected = Number(s.opening_amount) + cashInTotal + movementsNet;
       const diff = countedNum - expected;
       const { error } = await supabase.from("cash_sessions").update({
         counted_amount: countedNum,
@@ -69,7 +69,7 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
   if (isLoading) return null;
 
   const isOpen = session?.status === "open";
-  const expected = session ? Number(session.opening_amount) + cashInTotal : 0;
+  const expected = session ? Number(session.opening_amount) + cashInTotal + movementsNet : 0;
 
   return (
     <>
