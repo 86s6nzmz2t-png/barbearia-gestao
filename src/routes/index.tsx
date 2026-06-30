@@ -69,10 +69,26 @@ function Dashboard() {
   });
 
   const totals = useMemo(() => {
-    const gross = transactions.reduce((s, t) => s + Number(t.amount), 0);
-    const net = transactions.reduce((s, t) => s + Number(t.net_amount), 0);
-    return { gross, net, count: transactions.length, profit: net - monthlyExpenses };
-  }, [transactions, monthlyExpenses]);
+    const now = new Date();
+    let from: Date;
+    let to: Date;
+    if (period === "diario") {
+      from = startOfDay(now);
+      to = endOfDay(now);
+    } else if (period === "semanal") {
+      from = startOfWeek(now, { weekStartsOn: 1 });
+      to = endOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      from = startOfMonth(now);
+      to = endOfMonth(now);
+    }
+    const fromStr = format(from, "yyyy-MM-dd");
+    const toStr = format(to, "yyyy-MM-dd");
+    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
+    const gross = filtered.reduce((s, t) => s + Number(t.amount), 0);
+    const net = filtered.reduce((s, t) => s + Number(t.net_amount), 0);
+    return { gross, net, count: filtered.length, profit: net - monthlyExpenses };
+  }, [transactions, monthlyExpenses, period]);
 
   const chartData = useMemo(() => {
     const buckets =
