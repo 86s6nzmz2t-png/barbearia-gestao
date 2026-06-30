@@ -18,7 +18,7 @@ import { useTodayCashSession, type CashSession } from "@/lib/queries";
 
 function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
 
-export function CashSessionBanner({ cashInTotal }: { cashInTotal: number }) {
+export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTotal: number; movementsNet?: number }) {
   const qc = useQueryClient();
   const userId = useUserId();
   const { data: session, isLoading } = useTodayCashSession();
@@ -52,7 +52,7 @@ export function CashSessionBanner({ cashInTotal }: { cashInTotal: number }) {
     mutationFn: async (s: CashSession) => {
       const countedNum = parseNum(counted);
       if (!Number.isFinite(countedNum)) throw new Error("Informe o valor contado");
-      const expected = Number(s.opening_amount) + cashInTotal;
+      const expected = Number(s.opening_amount) + cashInTotal + movementsNet;
       const diff = countedNum - expected;
       const { error } = await supabase.from("cash_sessions").update({
         counted_amount: countedNum,
@@ -69,7 +69,7 @@ export function CashSessionBanner({ cashInTotal }: { cashInTotal: number }) {
   if (isLoading) return null;
 
   const isOpen = session?.status === "open";
-  const expected = session ? Number(session.opening_amount) + cashInTotal : 0;
+  const expected = session ? Number(session.opening_amount) + cashInTotal + movementsNet : 0;
 
   return (
     <>
@@ -131,6 +131,7 @@ export function CashSessionBanner({ cashInTotal }: { cashInTotal: number }) {
             <div className="space-y-3 text-sm">
               <Row label="Valor inicial" value={brl(Number(session.opening_amount))} />
               <Row label="Entradas em dinheiro" value={brl(cashInTotal)} />
+              <Row label="Suprimentos / Sangrias" value={brl(movementsNet)} />
               <Row label="Esperado na gaveta" value={brl(expected)} strong />
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Valor físico contado (R$)</Label>
