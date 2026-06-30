@@ -18,7 +18,7 @@ import { useTodayCashSession, type CashSession } from "@/lib/queries";
 
 function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
 
-export function CashSessionBanner({ cashInTotal }: { cashInTotal: number }) {
+export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTotal: number; movementsNet?: number }) {
   const qc = useQueryClient();
   const userId = useUserId();
   const { data: session, isLoading } = useTodayCashSession();
