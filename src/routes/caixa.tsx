@@ -3,7 +3,9 @@ import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Lock, Pencil, Plus, Trash2, UserPlus } from "lucide-react";
+import {
+  ArrowDownCircle, ArrowUpCircle, CalendarDays, Lock, Pencil, Plus, Trash2, UserPlus,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
@@ -27,6 +29,7 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { CashSessionBanner, useCashSessionGate } from "@/components/cash-session-banner";
 import { QuickClientDialog } from "@/components/quick-client-dialog";
+import { CashMovementDialog } from "@/components/cash-movement-dialog";
 import {
   PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
@@ -54,6 +57,16 @@ type TxRow = {
   date: string;
   cash_session_id: string | null;
   client: { name: string } | null;
+};
+
+type MovementRow = {
+  id: string;
+  type: "in" | "out";
+  amount: number;
+  description: string;
+  date: string;
+  cash_session_id: string | null;
+  created_at: string;
 };
 
 type FormState = {
@@ -84,11 +97,14 @@ function CaixaPage() {
   const cardFees = useCardFees();
   const { data: services = [] } = useServices();
   const { isOpen: cashOpen, session } = useCashSessionGate();
+  const today = format(new Date(), "yyyy-MM-dd");
 
   const [form, setForm] = useState<FormState>(() => emptyForm());
   const [editing, setEditing] = useState<TxRow | null>(null);
   const [deleting, setDeleting] = useState<TxRow | null>(null);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [movementOpen, setMovementOpen] = useState<null | "in" | "out">(null);
+  const [historyDate, setHistoryDate] = useState<string>("");
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -99,26 +115,85 @@ function CaixaPage() {
     },
   });
 
-  const { data: transactions = [], isLoading } = useQuery({
-    queryKey: ["transactions", "all"],
+  // Current view scope: history date if chosen, else today's open session
+  const viewingHistory = !!historyDate;
+  const scopeDate = historyDate || today;
+
+  const txQuery = useQuery({
+    queryKey: ["transactions", "scope", viewingHistory ? `date:${historyDate}` : `session:${session?.id ?? "none"}`],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from("transactions")
         .select("*, client:clients(name)")
-        .order("date", { ascending: false })
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false });
+      if (viewingHistory) {
+        query = query.eq("date", historyDate);
+      } else if (session?.id) {
+        query = query.eq("cash_session_id", session.id);
+      } else {
+        return [] as TxRow[];
+      }
+      const { data, error } = await query;
       if (error) throw error;
       return (data ?? []) as TxRow[];
     },
   });
 
-  const today = format(new Date(), "yyyy-MM-dd");
-  const cashInTotal = useMemo(() => transactions
-    .filter((t) => t.date === today && t.payment_method === "dinheiro")
-    .reduce((s, t) => s + Number(t.amount), 0), [transactions, today]);
+  const movQuery = useQuery({
+    queryKey: ["cash_movements", "scope", viewingHistory ? `date:${historyDate}` : `session:${session?.id ?? "none"}`],
+    queryFn: async () => {
+      let query = supabase
+        .from("cash_movements")
+        .select("*")
+        .order("created_at", { ascending: false });
+      if (viewingHistory) {
+        query = query.eq("date", historyDate);
+      } else if (session?.id) {
+        query = query.eq("cash_session_id", session.id);
+      } else {
+        return [] as MovementRow[];
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return (data ?? []) as MovementRow[];
+    },
+  });
 
-  const invalidate = () => qc.invalidateQueries({ queryKey: ["transactions"] });
+  const transactions = txQuery.data ?? [];
+  const movements = movQuery.data ?? [];
+
+  // Totals for the current scope
+  const totals = useMemo(() => {
+    const gross = transactions.reduce((s, t) => s + Number(t.amount), 0);
+    const net = transactions.reduce((s, t) => s + Number(t.net_amount), 0);
+    return { gross, net, count: transactions.length };
+  }, [transactions]);
+
+  // Cash totals (for fechamento) — always today's open session
+  const cashTodayQuery = useQuery({
+    queryKey: ["cash_today", session?.id ?? "none"],
+    enabled: !!session?.id,
+    queryFn: async () => {
+      const [txs, mvs] = await Promise.all([
+        supabase.from("transactions").select("amount, payment_method").eq("cash_session_id", session!.id),
+        supabase.from("cash_movements").select("type, amount").eq("cash_session_id", session!.id),
+      ]);
+      if (txs.error) throw txs.error;
+      if (mvs.error) throw mvs.error;
+      const cashIn = (txs.data ?? [])
+        .filter((t) => t.payment_method === "dinheiro")
+        .reduce((s, t) => s + Number(t.amount), 0);
+      const movNet = (mvs.data ?? []).reduce((s, m) => s + (m.type === "in" ? Number(m.amount) : -Number(m.amount)), 0);
+      return { cashIn, movNet };
+    },
+  });
+  const cashInTotal = cashTodayQuery.data?.cashIn ?? 0;
+  const movementsNet = cashTodayQuery.data?.movNet ?? 0;
+
+  const invalidate = () => {
+    qc.invalidateQueries({ queryKey: ["transactions"] });
+    qc.invalidateQueries({ queryKey: ["cash_today"] });
+  };
 
   const buildPayload = (f: FormState) => {
     const amount = parseNum(f.amount);
@@ -144,11 +219,7 @@ function CaixaPage() {
       const { error } = await supabase.from("transactions").insert(buildPayload(f));
       if (error) throw error;
     },
-    onSuccess: () => {
-      toast.success("Lançamento registrado");
-      setForm(emptyForm());
-      invalidate();
-    },
+    onSuccess: () => { toast.success("Lançamento registrado"); setForm(emptyForm()); invalidate(); },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -170,6 +241,19 @@ function CaixaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const deleteMovementMut = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("cash_movements").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Movimentação removida");
+      qc.invalidateQueries({ queryKey: ["cash_movements"] });
+      qc.invalidateQueries({ queryKey: ["cash_today"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const showFee = isCard(form.payment_method);
   const previewAmount = parseNum(form.amount) || 0;
   const previewFee = effectiveFeePercent(form.payment_method, parseNum(form.fee_percent) || 0);
@@ -185,11 +269,23 @@ function CaixaPage() {
   };
   const selectedServiceId = services.find((s) => s.name === form.service)?.id ?? "";
 
+  // Combined chronological feed: transactions + movements
+  type FeedItem =
+    | { kind: "tx"; data: TxRow; ts: string }
+    | { kind: "mov"; data: MovementRow; ts: string };
+  const feed: FeedItem[] = useMemo(() => {
+    const items: FeedItem[] = [
+      ...transactions.map((t) => ({ kind: "tx" as const, data: t, ts: t.date })),
+      ...movements.map((m) => ({ kind: "mov" as const, data: m, ts: m.created_at })),
+    ];
+    return items.sort((a, b) => (b.ts > a.ts ? 1 : -1));
+  }, [transactions, movements]);
+
   return (
     <div className="max-w-7xl mx-auto px-5 md:px-10 py-8 md:py-12">
       <PageHeader title="Fluxo de Caixa" subtitle="Registre e acompanhe todos os atendimentos." />
 
-      <CashSessionBanner cashInTotal={cashInTotal} />
+      <CashSessionBanner cashInTotal={cashInTotal} movementsNet={movementsNet} />
 
       <Card className="mb-8 relative">
         <CardHeader>
@@ -290,9 +386,72 @@ function CaixaPage() {
         </CardContent>
       </Card>
 
+      {/* Movements + History controls */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-base font-medium">Movimentações avulsas</CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              className="border-emerald-600/40 text-emerald-500 hover:bg-emerald-600/10 hover:text-emerald-400"
+              disabled={!cashOpen}
+              onClick={() => setMovementOpen("in")}
+            >
+              <ArrowUpCircle className="h-4 w-4 mr-1.5" /> Adicionar dinheiro
+            </Button>
+            <Button
+              variant="outline"
+              className="border-destructive/40 text-destructive hover:bg-destructive/10 hover:text-destructive"
+              disabled={!cashOpen}
+              onClick={() => setMovementOpen("out")}
+            >
+              <ArrowDownCircle className="h-4 w-4 mr-1.5" /> Retirar dinheiro
+            </Button>
+            {!cashOpen && (
+              <p className="text-xs text-muted-foreground w-full pt-1">Abra o caixa para registrar movimentações.</p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="font-display text-base font-medium flex items-center gap-2">
+              <CalendarDays className="h-4 w-4 text-gold" /> Consultar histórico por data
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-wrap items-center gap-2">
+            <Input
+              type="date"
+              value={historyDate}
+              max={today}
+              onChange={(e) => setHistoryDate(e.target.value)}
+              className="max-w-[200px]"
+            />
+            {historyDate && (
+              <Button variant="ghost" size="sm" onClick={() => setHistoryDate("")}>
+                Voltar ao caixa aberto
+              </Button>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Summary cards for scope */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        <SummaryCard label="Total bruto" value={brl(totals.gross)} />
+        <SummaryCard label="Total líquido" value={brl(totals.net)} accent />
+        <SummaryCard label="Atendimentos" value={String(totals.count)} />
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle className="font-display text-xl font-medium">Histórico</CardTitle>
+          <CardTitle className="font-display text-xl font-medium">
+            {viewingHistory
+              ? `Histórico de ${format(new Date(scopeDate + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}`
+              : "Lançamentos do caixa aberto"}
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <div className="overflow-x-auto">
@@ -300,7 +459,7 @@ function CaixaPage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Data</TableHead>
-                  <TableHead>Serviço</TableHead>
+                  <TableHead>Descrição</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Pagamento</TableHead>
                   <TableHead className="text-right">Taxa</TableHead>
@@ -310,39 +469,75 @@ function CaixaPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
+                {txQuery.isLoading || movQuery.isLoading ? (
                   <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
-                ) : transactions.length === 0 ? (
-                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">Nenhum lançamento ainda.</TableCell></TableRow>
-                ) : transactions.map((t) => (
-                  <TableRow key={t.id}>
+                ) : feed.length === 0 ? (
+                  <TableRow><TableCell colSpan={8} className="text-center text-muted-foreground py-8">
+                    {viewingHistory ? "Nenhum registro nessa data." : cashOpen ? "Nenhum lançamento no caixa atual." : "Abra o caixa para começar."}
+                  </TableCell></TableRow>
+                ) : feed.map((item) => item.kind === "tx" ? (
+                  <TableRow key={`tx-${item.data.id}`}>
                     <TableCell className="whitespace-nowrap text-muted-foreground">
-                      {format(new Date(t.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
+                      {format(new Date(item.data.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
                     </TableCell>
-                    <TableCell>{t.service}</TableCell>
-                    <TableCell className="text-muted-foreground">{t.client?.name ?? "—"}</TableCell>
-                    <TableCell><span className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">{paymentLabel(t.payment_method)}</span></TableCell>
+                    <TableCell>{item.data.service}</TableCell>
+                    <TableCell className="text-muted-foreground">{item.data.client?.name ?? "—"}</TableCell>
+                    <TableCell><span className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">{paymentLabel(item.data.payment_method)}</span></TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
-                      {Number(t.fee_percent) > 0 ? `${Number(t.fee_percent)}%` : "—"}
+                      {Number(item.data.fee_percent) > 0 ? `${Number(item.data.fee_percent)}%` : "—"}
                     </TableCell>
-                    <TableCell className="text-right tabular-nums">{brl(Number(t.amount))}</TableCell>
-                    <TableCell className="text-right tabular-nums text-gold">{brl(Number(t.net_amount))}</TableCell>
+                    <TableCell className="text-right tabular-nums">{brl(Number(item.data.amount))}</TableCell>
+                    <TableCell className="text-right tabular-nums text-gold">{brl(Number(item.data.net_amount))}</TableCell>
                     <TableCell>
                       <div className="flex gap-1 justify-end">
                         <Button size="icon" variant="ghost" onClick={() => {
-                          setEditing(t);
+                          setEditing(item.data);
                           setForm({
-                            amount: String(t.amount).replace(".", ","),
-                            service: t.service,
-                            payment_method: t.payment_method,
-                            fee_percent: String(t.fee_percent ?? defaultFeeFor(t.payment_method, cardFees)),
-                            client_id: t.client_id ?? "none",
-                            date: t.date,
+                            amount: String(item.data.amount).replace(".", ","),
+                            service: item.data.service,
+                            payment_method: item.data.payment_method,
+                            fee_percent: String(item.data.fee_percent ?? defaultFeeFor(item.data.payment_method, cardFees)),
+                            client_id: item.data.client_id ?? "none",
+                            date: item.data.date,
                           });
                         }}>
                           <Pencil className="h-4 w-4" />
                         </Button>
-                        <Button size="icon" variant="ghost" onClick={() => setDeleting(t)}>
+                        <Button size="icon" variant="ghost" onClick={() => setDeleting(item.data)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  <TableRow
+                    key={`mov-${item.data.id}`}
+                    className={item.data.type === "in"
+                      ? "bg-emerald-500/5 hover:bg-emerald-500/10"
+                      : "bg-destructive/5 hover:bg-destructive/10"}
+                  >
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {format(new Date(item.data.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell colSpan={3} className={item.data.type === "in" ? "text-emerald-500" : "text-destructive"}>
+                      <span className="inline-flex items-center gap-1.5 font-medium">
+                        {item.data.type === "in"
+                          ? <ArrowUpCircle className="h-4 w-4" />
+                          : <ArrowDownCircle className="h-4 w-4" />}
+                        {item.data.type === "in" ? "Suprimento" : "Sangria"}
+                      </span>
+                      {item.data.description && (
+                        <span className="text-muted-foreground"> · {item.data.description}</span>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">—</TableCell>
+                    <TableCell className={`text-right tabular-nums ${item.data.type === "in" ? "text-emerald-500" : "text-destructive"}`}>
+                      {item.data.type === "in" ? "+" : "−"}{brl(Number(item.data.amount))}
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">—</TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 justify-end">
+                        <Button size="icon" variant="ghost" onClick={() => deleteMovementMut.mutate(item.data.id)}>
                           <Trash2 className="h-4 w-4 text-destructive" />
                         </Button>
                       </div>
@@ -436,6 +631,13 @@ function CaixaPage() {
           setForm((prev) => ({ ...prev, client_id: c.id }));
         }}
       />
+
+      <CashMovementDialog
+        open={!!movementOpen}
+        type={movementOpen ?? "in"}
+        cashSessionId={session?.id ?? null}
+        onOpenChange={(o) => { if (!o) setMovementOpen(null); }}
+      />
     </div>
   );
 }
@@ -446,5 +648,16 @@ function Field({ label, children, className }: { label: string; children: React.
       <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">{label}</Label>
       {children}
     </div>
+  );
+}
+
+function SummaryCard({ label, value, accent }: { label: string; value: string; accent?: boolean }) {
+  return (
+    <Card>
+      <CardContent className="py-4">
+        <p className="text-xs uppercase tracking-wider text-muted-foreground">{label}</p>
+        <p className={`font-display text-2xl mt-1 tabular-nums ${accent ? "text-gold" : ""}`}>{value}</p>
+      </CardContent>
+    </Card>
   );
 }
