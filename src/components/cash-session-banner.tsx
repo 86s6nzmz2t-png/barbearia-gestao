@@ -131,6 +131,7 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
             <div className="space-y-3 text-sm">
               <Row label="Valor inicial" value={brl(Number(session.opening_amount))} />
               <Row label="Entradas em dinheiro" value={brl(cashInTotal)} />
+              <Row label="Suprimentos / Sangrias" value={brl(movementsNet)} />
               <Row label="Esperado na gaveta" value={brl(expected)} strong />
               <div>
                 <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Valor físico contado (R$)</Label>
