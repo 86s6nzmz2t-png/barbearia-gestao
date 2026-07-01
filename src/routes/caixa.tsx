@@ -306,7 +306,7 @@ function CaixaPage() {
             className="grid grid-cols-1 md:grid-cols-12 gap-3"
             onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }}
           >
-            <Field className="md:col-span-4" label="Serviço">
+            <Field className="md:col-span-3" label="Serviço">
               <Select value={selectedServiceId} onValueChange={onSelectService}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -340,7 +340,7 @@ function CaixaPage() {
                 </SelectContent>
               </Select>
             </Field>
-            {showFee ? (
+            {showFee && (
               <Field className="md:col-span-1" label="Taxa %">
                 <Input
                   inputMode="decimal"
@@ -348,11 +348,11 @@ function CaixaPage() {
                   onChange={(e) => setForm({ ...form, fee_percent: e.target.value })}
                 />
               </Field>
-            ) : (<div className="hidden md:block md:col-span-1" />)}
-            <Field className="md:col-span-1" label="Data">
+            )}
+            <Field className="md:col-span-2" label="Data">
               <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} required />
             </Field>
-            <Field className="md:col-span-2" label="Cliente">
+            <Field className={showFee ? "md:col-span-2" : "md:col-span-3"} label="Cliente">
               <div className="flex gap-1.5">
                 <div className="flex-1 min-w-0">
                   <ClientCombobox
