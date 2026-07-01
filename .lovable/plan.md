@@ -1,58 +1,25 @@
-# Plano: App de Gestão para Barbearia
+## Problema
 
-## Visão geral
-Aplicativo web com três seções (Dashboard, Fluxo de Caixa, Clientes) e navegação lateral. Visual dark premium: grafite/preto com acentos em dourado/âmbar, tipografia elegante (display serif para títulos + sans moderna para corpo).
+No formulário "Novo lançamento" da aba Caixa, o grid usa 12 colunas e a coluna "Data" recebe apenas `md:col-span-1`. Isso é estreito demais para um `<input type="date">` no desktop, então o campo fica cortado/invisível. Além disso, quando o método de pagamento não é cartão, um espaçador vazio de 1 coluna aparece entre "Pagamento" e "Data", criando o gap errado.
 
-## Backend (Lovable Cloud)
-Ativar Lovable Cloud para persistir dados. Sem login por enquanto (app de uso pessoal do dono) — pode ser adicionado depois.
+## Correção
 
-Tabelas:
-- `clients` — id, name, phone, whatsapp, notes, created_at
-- `transactions` — id, amount (bruto), net_amount (líquido), service (cabelo/barba/combo/outro), payment_method (pix/cartao/dinheiro), client_id (nullable), date, created_at
+Rebalancear as colunas do formulário para dar espaço adequado à Data e eliminar o espaçador fantasma:
 
-Líquido calculado automaticamente conforme forma de pagamento (taxas configuráveis no código: ex. Pix 0%, Dinheiro 0%, Cartão 3.5%) — assim o dashboard separa Bruto x Líquido sem campo manual.
+- Serviço: `md:col-span-4` → `md:col-span-3`
+- Valor: `md:col-span-2` (mantém)
+- Pagamento: `md:col-span-2` (mantém)
+- Taxa %: `md:col-span-2` quando visível (era 1); remover o espaçador vazio quando ocultada — a coluna simplesmente deixa de existir e as demais se ajustam.
+- Data: `md:col-span-1` → `md:col-span-3` quando não há Taxa, `md:col-span-1`... na verdade, mais simples: **Data sempre `md:col-span-3`** e ajustar o restante.
 
-## Estrutura de rotas
-- `/` → Dashboard
-- `/caixa` → Fluxo de Caixa
-- `/clientes` → Clientes
-- Layout raiz com sidebar fixa à esquerda (desktop) e barra inferior (mobile)
+Layout final proposto (12 col):
+- Sem cartão: Serviço 3 · Valor 2 · Pagamento 2 · Data 3 · Cliente 2 = 12
+- Com cartão: Serviço 3 · Valor 2 · Pagamento 2 · Taxa 2 · Data 1... 
 
-## Telas
+Para manter simplicidade, fixar Data em 2 colunas e Cliente em 3:
+- Sem cartão: Serviço 3 · Valor 2 · Pagamento 2 · Data 2 · Cliente 3 = 12
+- Com cartão: Serviço 3 · Valor 2 · Pagamento 2 · Taxa 1 · Data 2 · Cliente 2 = 12
 
-### 1. Dashboard
-- Tabs/segmented control: Diário · Semanal · Mensal
-- 3 cards de destaque: Total Entradas (Bruto), Líquido Recebido, Total de Atendimentos
-- Gráfico de barras (Recharts) do faturamento no período
-- Lista enxuta dos últimos 5 lançamentos
+Com isso a Data ganha largura suficiente para o input date aparecer inteiro no desktop e o espaço entre Pagamento e Data fica correto (sem espaçador vazio).
 
-### 2. Fluxo de Caixa
-- Formulário rápido no topo: Valor, Serviço (select), Pagamento (select), Data (datepicker), Cliente (combobox buscável, opcional)
-- Tabela abaixo com histórico, ordenada por data desc
-- Ações por linha: editar (abre dialog com o mesmo formulário) e excluir (confirm dialog)
-
-### 3. Clientes
-- Formulário: Nome, Telefone, WhatsApp, Notas/Preferências (textarea)
-- Barra de pesquisa filtra por nome ou telefone
-- Lista em cards com ações editar/excluir e atalho "WhatsApp" abrindo `wa.me/<numero>`
-
-## Design system
-- Paleta dark grafite + dourado definida em `src/styles.css` via tokens semânticos (background, foreground, primary=gold, accent=amber, card grafite, border sutil)
-- Tipografia: Playfair Display (títulos) + Inter (corpo), carregadas via `<link>` no `__root.tsx`
-- Componentes shadcn: Card, Button, Input, Select, Table, Dialog, Tabs, Sidebar, Sonner (toasts)
-- Detalhes: bordas finas douradas, sombras suaves quentes, ícones lucide
-
-## Stack técnica
-- TanStack Start + Router (file-based em `src/routes/`)
-- TanStack Query para data fetching (loaders + `useSuspenseQuery`)
-- Server functions (`createServerFn`) para CRUD em `src/lib/*.functions.ts`
-- Recharts para gráfico
-- Validação com Zod nos formulários e nos inputValidators das server functions
-
-## Entregáveis
-1. Ativar Lovable Cloud + migração com tabelas, grants e RLS permissiva (sem auth)
-2. Tokens de design e fontes
-3. Layout raiz com sidebar/bottom-nav
-4. Server functions: listar/criar/editar/excluir clientes e transações; agregados do dashboard por período
-5. Três telas funcionais conectadas ao backend
-6. Toasts de sucesso/erro e estados de loading/empty
+Nenhuma mudança de lógica, apenas classes de grid no `src/routes/caixa.tsx`.
