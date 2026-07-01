@@ -30,6 +30,7 @@ import { PageHeader } from "@/components/app-shell";
 import { CashSessionBanner, useCashSessionGate } from "@/components/cash-session-banner";
 import { QuickClientDialog } from "@/components/quick-client-dialog";
 import { CashMovementDialog } from "@/components/cash-movement-dialog";
+import { ClientCombobox } from "@/components/client-combobox";
 import {
   PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
