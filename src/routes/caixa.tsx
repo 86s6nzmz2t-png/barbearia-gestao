@@ -207,7 +207,7 @@ function CaixaPage() {
       fee_percent: feePercent,
       service: f.service,
       payment_method: f.payment_method,
-      client_id: f.client_id === "none" ? null : f.client_id,
+      client_id: f.client_id === "none" || f.client_id === "avulso" ? null : f.client_id,
       date: f.date,
       cash_session_id: session?.id ?? null,
       user_id: userId,
