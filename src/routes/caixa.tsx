@@ -583,13 +583,11 @@ function CaixaPage() {
               </Field>
             )}
             <Field className="col-span-2" label="Cliente">
-              <Select value={form.client_id} onValueChange={(v) => setForm({ ...form, client_id: v })}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">— Sem cliente —</SelectItem>
-                  {clients.map((c) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <ClientCombobox
+                clients={clients}
+                value={form.client_id}
+                onChange={(v) => setForm({ ...form, client_id: v })}
+              />
             </Field>
           </div>
           <DialogFooter>
