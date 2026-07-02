@@ -32,8 +32,9 @@ import { QuickClientDialog } from "@/components/quick-client-dialog";
 import { CashMovementDialog } from "@/components/cash-movement-dialog";
 import { ClientCombobox } from "@/components/client-combobox";
 import {
-  PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
+  PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, isInfinitePay, paymentLabel,
 } from "@/lib/finance";
+import { enviarParaInfinitePay } from "@/lib/infinitepay";
 import { useCardFees, useServices } from "@/lib/queries";
 import { useUserId } from "@/lib/auth";
 
