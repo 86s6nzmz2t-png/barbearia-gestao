@@ -827,7 +827,6 @@ function CaixaPage() {
         </DialogContent>
       </Dialog>
     </div>
-    </div>
   );
 }
 
