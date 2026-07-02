@@ -16,6 +16,7 @@ import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CaixaRouteImport } from './routes/caixa'
 import { Route as AuthRouteImport } from './routes/auth'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApiPublicInfinitepayWebhookRouteImport } from './routes/api/public/infinitepay-webhook'
 
 const ServicosRoute = ServicosRouteImport.update({
   id: '/servicos',
@@ -52,6 +53,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicInfinitepayWebhookRoute =
+  ApiPublicInfinitepayWebhookRouteImport.update({
+    id: '/api/public/infinitepay-webhook',
+    path: '/api/public/infinitepay-webhook',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -61,6 +68,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/fidelizacao': typeof FidelizacaoRoute
   '/servicos': typeof ServicosRoute
+  '/api/public/infinitepay-webhook': typeof ApiPublicInfinitepayWebhookRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -70,6 +78,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/fidelizacao': typeof FidelizacaoRoute
   '/servicos': typeof ServicosRoute
+  '/api/public/infinitepay-webhook': typeof ApiPublicInfinitepayWebhookRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -80,6 +89,7 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/fidelizacao': typeof FidelizacaoRoute
   '/servicos': typeof ServicosRoute
+  '/api/public/infinitepay-webhook': typeof ApiPublicInfinitepayWebhookRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -91,6 +101,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/fidelizacao'
     | '/servicos'
+    | '/api/public/infinitepay-webhook'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -100,6 +111,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/fidelizacao'
     | '/servicos'
+    | '/api/public/infinitepay-webhook'
   id:
     | '__root__'
     | '/'
@@ -109,6 +121,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/fidelizacao'
     | '/servicos'
+    | '/api/public/infinitepay-webhook'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -119,6 +132,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FidelizacaoRoute: typeof FidelizacaoRoute
   ServicosRoute: typeof ServicosRoute
+  ApiPublicInfinitepayWebhookRoute: typeof ApiPublicInfinitepayWebhookRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -172,6 +186,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/infinitepay-webhook': {
+      id: '/api/public/infinitepay-webhook'
+      path: '/api/public/infinitepay-webhook'
+      fullPath: '/api/public/infinitepay-webhook'
+      preLoaderRoute: typeof ApiPublicInfinitepayWebhookRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -183,6 +204,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   FidelizacaoRoute: FidelizacaoRoute,
   ServicosRoute: ServicosRoute,
+  ApiPublicInfinitepayWebhookRoute: ApiPublicInfinitepayWebhookRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
