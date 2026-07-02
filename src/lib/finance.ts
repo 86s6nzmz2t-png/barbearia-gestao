@@ -4,7 +4,12 @@ export const PAYMENT_METHODS = [
   { value: "pix", label: "Pix" },
   { value: "cartao_credito", label: "Cartão de Crédito" },
   { value: "cartao_debito", label: "Cartão de Débito" },
+  { value: "infinitepay", label: "Maquininha InfinitePay" },
 ] as const;
+
+export function isInfinitePay(method: string) {
+  return method === "infinitepay";
+}
 
 export const DEFAULT_CREDIT_FEE = 3;
 export const DEFAULT_DEBIT_FEE = 1.99;
