@@ -343,7 +343,7 @@ function CaixaPage() {
           )}
           <form
             className="grid grid-cols-1 md:grid-cols-12 gap-3"
-            onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }}
+            onSubmit={(e) => { e.preventDefault(); void handleSubmitForm(form); }}
           >
             <Field className="md:col-span-3" label="Serviço">
               <Select value={selectedServiceId} onValueChange={onSelectService}>
