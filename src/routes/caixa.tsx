@@ -455,7 +455,8 @@ function CaixaPage() {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="overflow-x-auto">
+          {/* Desktop table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -547,6 +548,120 @@ function CaixaPage() {
                 ))}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Mobile / Tablet cards */}
+          <div className="md:hidden space-y-3">
+            {txQuery.isLoading || movQuery.isLoading ? (
+              <p className="text-center text-muted-foreground py-8">Carregando...</p>
+            ) : feed.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">
+                {viewingHistory ? "Nenhum registro nessa data." : cashOpen ? "Nenhum lançamento no caixa atual." : "Abra o caixa para começar."}
+              </p>
+            ) : (
+              feed.map((item) => (
+                <div
+                  key={item.kind === "tx" ? `tx-card-${item.data.id}` : `mov-card-${item.data.id}`}
+                  className="rounded-xl border border-border bg-card p-4 shadow-sm"
+                >
+                  {item.kind === "tx" ? (
+                    <>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <h3 className="font-display text-base font-semibold text-foreground leading-tight">
+                          {item.data.service}
+                        </h3>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-10 w-10"
+                            onClick={() => {
+                              setEditing(item.data);
+                              setForm({
+                                amount: String(item.data.amount).replace(".", ","),
+                                service: item.data.service,
+                                payment_method: item.data.payment_method,
+                                fee_percent: String(item.data.fee_percent ?? defaultFeeFor(item.data.payment_method, cardFees)),
+                                client_id: item.data.client_id ?? "none",
+                                date: item.data.date,
+                              });
+                            }}
+                          >
+                            <Pencil className="h-5 w-5" />
+                          </Button>
+                          <Button
+                            size="icon"
+                            variant="ghost"
+                            className="h-10 w-10"
+                            onClick={() => setDeleting(item.data)}
+                          >
+                            <Trash2 className="h-5 w-5 text-destructive" />
+                          </Button>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-2 gap-y-2 gap-x-4 text-sm">
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Valor</p>
+                          <p className="font-medium tabular-nums">{brl(Number(item.data.amount))}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Pagamento</p>
+                          <span className="inline-block text-xs px-2 py-0.5 rounded bg-secondary text-secondary-foreground mt-0.5">
+                            {paymentLabel(item.data.payment_method)}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
+                          <p className="text-foreground truncate">{item.data.client?.name ?? "—"}</p>
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Líquido</p>
+                          <p className="font-medium tabular-nums text-gold">{brl(Number(item.data.net_amount))}</p>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border flex items-center justify-between text-xs text-muted-foreground">
+                        <span>
+                          {format(new Date(item.data.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
+                        </span>
+                        {Number(item.data.fee_percent) > 0 && (
+                          <span>Taxa {Number(item.data.fee_percent)}%</span>
+                        )}
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <div className="flex items-start justify-between gap-3 mb-3">
+                        <h3 className={`font-display text-base font-semibold leading-tight ${item.data.type === "in" ? "text-emerald-500" : "text-destructive"}`}>
+                          <span className="inline-flex items-center gap-1.5">
+                            {item.data.type === "in" ? <ArrowUpCircle className="h-5 w-5" /> : <ArrowDownCircle className="h-5 w-5" />}
+                            {item.data.type === "in" ? "Suprimento" : "Sangria"}
+                          </span>
+                        </h3>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-10 w-10"
+                          onClick={() => deleteMovementMut.mutate(item.data.id)}
+                        >
+                          <Trash2 className="h-5 w-5 text-destructive" />
+                        </Button>
+                      </div>
+                      <div className="text-sm">
+                        <p className="font-medium tabular-nums text-lg">
+                          {item.data.type === "in" ? "+" : "−"}{brl(Number(item.data.amount))}
+                        </p>
+                        {item.data.description && (
+                          <p className="text-muted-foreground mt-1">{item.data.description}</p>
+                        )}
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-border text-xs text-muted-foreground">
+                        {format(new Date(item.data.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ))
+            )}
           </div>
         </CardContent>
       </Card>
