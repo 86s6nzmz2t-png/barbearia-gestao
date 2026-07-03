@@ -4,11 +4,12 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown } from "lucide-react";
+import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Progress } from "@/components/ui/progress";
 import { brl, paymentLabel } from "@/lib/finance";
 import { PageHeader } from "@/components/app-shell";
 
@@ -119,6 +120,41 @@ function Dashboard() {
     });
   }, [transactions, range]);
 
+  const paymentBreakdown = useMemo(() => {
+    const now = new Date();
+    let from: Date;
+    let to: Date;
+    if (period === "diario") {
+      from = startOfDay(now);
+      to = endOfDay(now);
+    } else if (period === "semanal") {
+      from = startOfWeek(now, { weekStartsOn: 1 });
+      to = endOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      from = startOfMonth(now);
+      to = endOfMonth(now);
+    }
+    const fromStr = format(from, "yyyy-MM-dd");
+    const toStr = format(to, "yyyy-MM-dd");
+    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
+
+    const methods = [
+      { key: "dinheiro", label: "Dinheiro", icon: <Banknote className="h-5 w-5" /> },
+      { key: "pix", label: "Pix", icon: <Smartphone className="h-5 w-5" /> },
+      { key: "cartao_credito", label: "Cartão de Crédito", icon: <CreditCard className="h-5 w-5" /> },
+      { key: "cartao_debito", label: "Cartão de Débito", icon: <CreditCard className="h-5 w-5" /> },
+    ] as const;
+
+    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
+
+    return methods.map((m) => {
+      const amount = filtered
+        .filter((t) => t.payment_method === m.key)
+        .reduce((s, t) => s + Number(t.amount), 0);
+      return { ...m, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0 };
+    });
+  }, [transactions, period]);
+
   const recent = transactions.slice(0, 5);
 
   return (
@@ -176,6 +212,56 @@ function Dashboard() {
           />
         </div>
       )}
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="font-display text-xl font-medium">Faturamento por Forma de Pagamento</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {period !== "mensal" ? (
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              {paymentBreakdown.map((p) => (
+                <div
+                  key={p.key}
+                  className="rounded-xl border border-border bg-secondary/40 p-4 flex flex-col items-start gap-2"
+                >
+                  <div className="flex items-center gap-2 text-gold">
+                    {p.icon}
+                    <span className="text-xs uppercase tracking-wider text-muted-foreground font-medium">
+                      {p.label}
+                    </span>
+                  </div>
+                  <span className="font-display text-2xl text-foreground tabular-nums">
+                    {isLoading ? "—" : brl(p.amount)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-5">
+              {paymentBreakdown.map((p) => (
+                <div key={p.key} className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+                      <span className="text-gold">{p.icon}</span>
+                      {p.label}
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <span className="font-display text-lg text-foreground tabular-nums">
+                        {isLoading ? "—" : brl(p.amount)}
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums w-10 text-right">
+                        {isLoading ? "" : `${p.percent}%`}
+                      </span>
+                    </div>
+                  </div>
+                  <Progress value={isLoading ? 0 : p.percent} className="h-2 bg-secondary" />
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       <Card className="mb-8">
         <CardHeader>
