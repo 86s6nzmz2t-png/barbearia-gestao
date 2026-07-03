@@ -759,34 +759,6 @@ function CaixaPage() {
         onOpenChange={(o) => { if (!o) setMovementOpen(null); }}
       />
 
-      <Dialog open={!!infinitePayState} onOpenChange={() => { /* bloqueado durante processamento */ }}>
-        <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-gold animate-pulse" />
-              Maquininha InfinitePay
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <p className="text-sm">
-              {infinitePayState?.status === "sending"
-                ? "Enviando cobrança para a nuvem da InfinitePay..."
-                : "Aguardando aprovação na maquininha..."}
-            </p>
-            {infinitePayState && (
-              <p className="font-display text-2xl tabular-nums text-gold">
-                {brl(infinitePayState.amount)}
-              </p>
-            )}
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div className="h-full w-1/3 bg-gold animate-pulse" />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Não feche essa janela até a maquininha confirmar o pagamento.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
