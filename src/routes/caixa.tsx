@@ -32,9 +32,8 @@ import { QuickClientDialog } from "@/components/quick-client-dialog";
 import { CashMovementDialog } from "@/components/cash-movement-dialog";
 import { ClientCombobox } from "@/components/client-combobox";
 import {
-  PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, isInfinitePay, paymentLabel,
+  PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
-import { enviarParaInfinitePay } from "@/lib/infinitepay";
 import { useCardFees, useServices } from "@/lib/queries";
 import { useUserId } from "@/lib/auth";
 
@@ -107,9 +106,6 @@ function CaixaPage() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [movementOpen, setMovementOpen] = useState<null | "in" | "out">(null);
   const [historyDate, setHistoryDate] = useState<string>("");
-  const [infinitePayState, setInfinitePayState] = useState<
-    null | { status: "sending" | "waiting"; amount: number }
-  >(null);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
@@ -228,39 +224,6 @@ function CaixaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const handleSubmitForm = async (f: FormState) => {
-    if (!isInfinitePay(f.payment_method)) {
-      createMut.mutate(f);
-      return;
-    }
-    // InfinitePay Cloud API flow (mock)
-    if (!cashOpen) { toast.error("Abra o caixa antes de lançar."); return; }
-    const amount = parseNum(f.amount);
-    if (!amount || amount <= 0) { toast.error("Informe um valor válido."); return; }
-    if (!f.service) { toast.error("Selecione um serviço."); return; }
-    try {
-      setInfinitePayState({ status: "sending", amount });
-      // Simula latência de envio para a nuvem
-      await new Promise((r) => setTimeout(r, 600));
-      setInfinitePayState({ status: "waiting", amount });
-      const payload = await enviarParaInfinitePay({ amount });
-      if (payload.status !== "approved") {
-        setInfinitePayState(null);
-        toast.error("Pagamento não aprovado pela InfinitePay.");
-        return;
-      }
-      // Persistir como pago no caixa aberto
-      const { error } = await supabase.from("transactions").insert(buildPayload(f));
-      if (error) throw error;
-      setInfinitePayState(null);
-      setForm(emptyForm());
-      invalidate();
-      toast.success(`Pagamento de ${brl(payload.amount)} APROVADO via InfinitePay!`);
-    } catch (e) {
-      setInfinitePayState(null);
-      toast.error(e instanceof Error ? e.message : "Falha na cobrança InfinitePay");
-    }
-  };
 
 
   const updateMut = useMutation({
@@ -343,7 +306,7 @@ function CaixaPage() {
           )}
           <form
             className="grid grid-cols-1 md:grid-cols-12 gap-3"
-            onSubmit={(e) => { e.preventDefault(); void handleSubmitForm(form); }}
+            onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }}
           >
             <Field className="md:col-span-3" label="Serviço">
               <Select value={selectedServiceId} onValueChange={onSelectService}>
@@ -420,12 +383,10 @@ function CaixaPage() {
               </p>
               <Button
                 type="submit"
-                disabled={createMut.isPending || !cashOpen || !!infinitePayState}
+                disabled={createMut.isPending || !cashOpen}
                 className="bg-gold text-primary-foreground hover:bg-gold/90"
               >
-                {createMut.isPending || infinitePayState
-                  ? (isInfinitePay(form.payment_method) ? "Enviando..." : "Salvando...")
-                  : (isInfinitePay(form.payment_method) ? "Cobrar na maquininha" : "Registrar")}
+                {createMut.isPending ? "Salvando..." : "Registrar"}
               </Button>
             </div>
           </form>
@@ -798,34 +759,6 @@ function CaixaPage() {
         onOpenChange={(o) => { if (!o) setMovementOpen(null); }}
       />
 
-      <Dialog open={!!infinitePayState} onOpenChange={() => { /* bloqueado durante processamento */ }}>
-        <DialogContent className="max-w-md" onInteractOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
-          <DialogHeader>
-            <DialogTitle className="font-display flex items-center gap-2">
-              <span className="inline-block h-2.5 w-2.5 rounded-full bg-gold animate-pulse" />
-              Maquininha InfinitePay
-            </DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-3">
-            <p className="text-sm">
-              {infinitePayState?.status === "sending"
-                ? "Enviando cobrança para a nuvem da InfinitePay..."
-                : "Aguardando aprovação na maquininha..."}
-            </p>
-            {infinitePayState && (
-              <p className="font-display text-2xl tabular-nums text-gold">
-                {brl(infinitePayState.amount)}
-              </p>
-            )}
-            <div className="h-1.5 w-full overflow-hidden rounded-full bg-secondary">
-              <div className="h-full w-1/3 bg-gold animate-pulse" />
-            </div>
-            <p className="text-xs text-muted-foreground">
-              Não feche essa janela até a maquininha confirmar o pagamento.
-            </p>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
