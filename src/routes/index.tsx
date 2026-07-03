@@ -120,6 +120,41 @@ function Dashboard() {
     });
   }, [transactions, range]);
 
+  const paymentBreakdown = useMemo(() => {
+    const now = new Date();
+    let from: Date;
+    let to: Date;
+    if (period === "diario") {
+      from = startOfDay(now);
+      to = endOfDay(now);
+    } else if (period === "semanal") {
+      from = startOfWeek(now, { weekStartsOn: 1 });
+      to = endOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      from = startOfMonth(now);
+      to = endOfMonth(now);
+    }
+    const fromStr = format(from, "yyyy-MM-dd");
+    const toStr = format(to, "yyyy-MM-dd");
+    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
+
+    const methods = [
+      { key: "dinheiro", label: "Dinheiro", icon: <Banknote className="h-5 w-5" /> },
+      { key: "pix", label: "Pix", icon: <Smartphone className="h-5 w-5" /> },
+      { key: "cartao_credito", label: "Cartão de Crédito", icon: <CreditCard className="h-5 w-5" /> },
+      { key: "cartao_debito", label: "Cartão de Débito", icon: <CreditCard className="h-5 w-5" /> },
+    ] as const;
+
+    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
+
+    return methods.map((m) => {
+      const amount = filtered
+        .filter((t) => t.payment_method === m.key)
+        .reduce((s, t) => s + Number(t.amount), 0);
+      return { ...m, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0 };
+    });
+  }, [transactions, period]);
+
   const recent = transactions.slice(0, 5);
 
   return (
