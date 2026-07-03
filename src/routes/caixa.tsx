@@ -106,9 +106,6 @@ function CaixaPage() {
   const [quickOpen, setQuickOpen] = useState(false);
   const [movementOpen, setMovementOpen] = useState<null | "in" | "out">(null);
   const [historyDate, setHistoryDate] = useState<string>("");
-  const [infinitePayState, setInfinitePayState] = useState<
-    null | { status: "sending" | "waiting"; amount: number }
-  >(null);
 
   const { data: clients = [] } = useQuery({
     queryKey: ["clients"],
