@@ -224,39 +224,6 @@ function CaixaPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
-  const handleSubmitForm = async (f: FormState) => {
-    if (!isInfinitePay(f.payment_method)) {
-      createMut.mutate(f);
-      return;
-    }
-    // InfinitePay Cloud API flow (mock)
-    if (!cashOpen) { toast.error("Abra o caixa antes de lançar."); return; }
-    const amount = parseNum(f.amount);
-    if (!amount || amount <= 0) { toast.error("Informe um valor válido."); return; }
-    if (!f.service) { toast.error("Selecione um serviço."); return; }
-    try {
-      setInfinitePayState({ status: "sending", amount });
-      // Simula latência de envio para a nuvem
-      await new Promise((r) => setTimeout(r, 600));
-      setInfinitePayState({ status: "waiting", amount });
-      const payload = await enviarParaInfinitePay({ amount });
-      if (payload.status !== "approved") {
-        setInfinitePayState(null);
-        toast.error("Pagamento não aprovado pela InfinitePay.");
-        return;
-      }
-      // Persistir como pago no caixa aberto
-      const { error } = await supabase.from("transactions").insert(buildPayload(f));
-      if (error) throw error;
-      setInfinitePayState(null);
-      setForm(emptyForm());
-      invalidate();
-      toast.success(`Pagamento de ${brl(payload.amount)} APROVADO via InfinitePay!`);
-    } catch (e) {
-      setInfinitePayState(null);
-      toast.error(e instanceof Error ? e.message : "Falha na cobrança InfinitePay");
-    }
-  };
 
 
   const updateMut = useMutation({
