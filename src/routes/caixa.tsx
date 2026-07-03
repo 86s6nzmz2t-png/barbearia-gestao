@@ -383,12 +383,10 @@ function CaixaPage() {
               </p>
               <Button
                 type="submit"
-                disabled={createMut.isPending || !cashOpen || !!infinitePayState}
+                disabled={createMut.isPending || !cashOpen}
                 className="bg-gold text-primary-foreground hover:bg-gold/90"
               >
-                {createMut.isPending || infinitePayState
-                  ? (isInfinitePay(form.payment_method) ? "Enviando..." : "Salvando...")
-                  : (isInfinitePay(form.payment_method) ? "Cobrar na maquininha" : "Registrar")}
+                {createMut.isPending ? "Salvando..." : "Registrar"}
               </Button>
             </div>
           </form>
