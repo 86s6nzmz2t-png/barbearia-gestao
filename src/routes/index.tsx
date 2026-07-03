@@ -4,7 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown } from "lucide-react";
+import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
