@@ -31,7 +31,7 @@ function getRange(period: Period) {
     return { from: startOfDay(subDays(now, 13)), to: endOfDay(now), step: "day" as const };
   }
   if (period === "semanal") {
-    return { from: startOfWeek(subDays(now, 7 * 7), { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "week" as const };
+    return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "day" as const };
   }
   return { from: startOfMonth(subDays(now, 30 * 5)), to: endOfMonth(now), step: "month" as const };
 }
@@ -95,25 +95,17 @@ function Dashboard() {
     const buckets =
       range.step === "day"
         ? eachDayOfInterval({ start: range.from, end: range.to })
-        : range.step === "week"
-        ? eachWeekOfInterval({ start: range.from, end: range.to }, { weekStartsOn: 1 })
         : eachMonthOfInterval({ start: range.from, end: range.to });
 
     return buckets.map((b) => {
       const inBucket = transactions.filter((t) => {
         const d = new Date(t.date + "T00:00:00");
         if (range.step === "day") return format(d, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
-        if (range.step === "week") {
-          const ws = startOfWeek(d, { weekStartsOn: 1 });
-          return format(ws, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
-        }
         return format(d, "yyyy-MM") === format(b, "yyyy-MM");
       });
       const sum = inBucket.reduce((s, t) => s + Number(t.amount), 0);
       const label =
         range.step === "day"
-          ? format(b, "dd/MM", { locale: ptBR })
-          : range.step === "week"
           ? format(b, "dd/MM", { locale: ptBR })
           : format(b, "MMM", { locale: ptBR });
       return { label, valor: sum };
