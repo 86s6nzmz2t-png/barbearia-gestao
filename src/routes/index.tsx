@@ -31,7 +31,7 @@ function getRange(period: Period) {
     return { from: startOfDay(subDays(now, 13)), to: endOfDay(now), step: "day" as const };
   }
   if (period === "semanal") {
-    return { from: startOfWeek(subDays(now, 7 * 7), { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "week" as const };
+    return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "day" as const };
   }
   return { from: startOfMonth(subDays(now, 30 * 5)), to: endOfMonth(now), step: "month" as const };
 }
