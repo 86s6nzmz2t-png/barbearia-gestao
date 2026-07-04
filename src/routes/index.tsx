@@ -95,8 +95,6 @@ function Dashboard() {
     const buckets =
       range.step === "day"
         ? eachDayOfInterval({ start: range.from, end: range.to })
-        : range.step === "week"
-        ? eachWeekOfInterval({ start: range.from, end: range.to }, { weekStartsOn: 1 })
         : eachMonthOfInterval({ start: range.from, end: range.to });
 
     return buckets.map((b) => {
