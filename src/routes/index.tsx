@@ -101,10 +101,6 @@ function Dashboard() {
       const inBucket = transactions.filter((t) => {
         const d = new Date(t.date + "T00:00:00");
         if (range.step === "day") return format(d, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
-        if (range.step === "week") {
-          const ws = startOfWeek(d, { weekStartsOn: 1 });
-          return format(ws, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
-        }
         return format(d, "yyyy-MM") === format(b, "yyyy-MM");
       });
       const sum = inBucket.reduce((s, t) => s + Number(t.amount), 0);
