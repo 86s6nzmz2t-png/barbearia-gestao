@@ -107,8 +107,6 @@ function Dashboard() {
       const label =
         range.step === "day"
           ? format(b, "dd/MM", { locale: ptBR })
-          : range.step === "week"
-          ? format(b, "dd/MM", { locale: ptBR })
           : format(b, "MMM", { locale: ptBR });
       return { label, valor: sum };
     });
