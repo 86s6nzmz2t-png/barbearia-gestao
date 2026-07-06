@@ -317,26 +317,55 @@ function CaixaPage() {
             className="grid grid-cols-1 md:grid-cols-12 gap-3"
             onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }}
           >
-            <Field className="md:col-span-3" label="Serviço">
-              <Select value={selectedServiceId} onValueChange={onSelectService}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  {services.length === 0 ? (
-                    <SelectItem value="__none" disabled>Nenhum serviço cadastrado</SelectItem>
-                  ) : services.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>
+            <Field className="md:col-span-12" label="Serviços">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1 min-w-0">
+                  <Select value={pickerServiceId} onValueChange={setPickerServiceId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione um serviço..." /></SelectTrigger>
+                    <SelectContent>
+                      {services.length === 0 ? (
+                        <SelectItem value="__none" disabled>Nenhum serviço cadastrado</SelectItem>
+                      ) : services.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-gold/40 text-gold hover:bg-gold/10 hover:text-gold shrink-0"
+                  disabled={!pickerServiceId}
+                  onClick={addServiceToForm}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Adicionar serviço
+                </Button>
+              </div>
+              {form.services.length > 0 && (
+                <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-muted/20">
+                  {form.services.map((s, idx) => (
+                    <li key={`${s.id ?? s.name}-${idx}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <span className="truncate">{s.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="tabular-nums text-muted-foreground">{brl(Number(s.price))}</span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => removeServiceAt(idx)}
+                          title="Remover serviço"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </li>
                   ))}
-                </SelectContent>
-              </Select>
+                </ul>
+              )}
             </Field>
-            <Field className="md:col-span-2" label="Valor (R$)">
-              <Input
-                inputMode="decimal"
-                placeholder="0,00"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                required
-              />
+            <Field className="md:col-span-2" label="Total (R$)">
+              <Input readOnly value={totalAmount ? brl(totalAmount) : "—"} className="bg-muted/40 font-medium tabular-nums" />
             </Field>
             <Field className="md:col-span-2" label="Pagamento">
               <Select
