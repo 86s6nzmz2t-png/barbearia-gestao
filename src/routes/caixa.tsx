@@ -74,8 +74,8 @@ type MovementRow = {
 };
 
 type FormState = {
+  services: ServiceLine[];
   amount: string;
-  service: string;
   payment_method: string;
   fee_percent: string;
   client_id: string;
@@ -84,8 +84,8 @@ type FormState = {
 
 function emptyForm(): FormState {
   return {
+    services: [],
     amount: "",
-    service: "",
     payment_method: "dinheiro",
     fee_percent: "0",
     client_id: "none",
@@ -94,6 +94,10 @@ function emptyForm(): FormState {
 }
 
 function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
+
+function sumServices(list: ServiceLine[]) {
+  return Math.round(list.reduce((s, x) => s + Number(x.price || 0), 0) * 100) / 100;
+}
 
 function CaixaPage() {
   const qc = useQueryClient();
