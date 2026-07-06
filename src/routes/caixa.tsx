@@ -47,12 +47,15 @@ export const Route = createFileRoute("/caixa")({
   component: CaixaPage,
 });
 
+type ServiceLine = { id?: string; name: string; price: number };
+
 type TxRow = {
   id: string;
   amount: number;
   net_amount: number;
   fee_percent: number;
   service: string;
+  services: ServiceLine[] | null;
   payment_method: string;
   client_id: string | null;
   date: string;
@@ -71,8 +74,8 @@ type MovementRow = {
 };
 
 type FormState = {
+  services: ServiceLine[];
   amount: string;
-  service: string;
   payment_method: string;
   fee_percent: string;
   client_id: string;
@@ -81,8 +84,8 @@ type FormState = {
 
 function emptyForm(): FormState {
   return {
+    services: [],
     amount: "",
-    service: "",
     payment_method: "dinheiro",
     fee_percent: "0",
     client_id: "none",
@@ -91,6 +94,25 @@ function emptyForm(): FormState {
 }
 
 function parseNum(v: string) { return parseFloat(v.replace(",", ".")); }
+
+function sumServices(list: ServiceLine[]) {
+  return Math.round(list.reduce((s, x) => s + Number(x.price || 0), 0) * 100) / 100;
+}
+
+function formFromTx(tx: TxRow): FormState {
+  const raw = Array.isArray(tx.services) ? tx.services : [];
+  const services: ServiceLine[] = raw.length > 0
+    ? raw.map((s) => ({ id: s.id, name: s.name, price: Number(s.price) }))
+    : [{ name: tx.service, price: Number(tx.amount) }];
+  return {
+    services,
+    amount: String(tx.amount).replace(".", ","),
+    payment_method: tx.payment_method,
+    fee_percent: String(tx.fee_percent ?? 0),
+    client_id: tx.client_id ?? "none",
+    date: tx.date,
+  };
+}
 
 function CaixaPage() {
   const qc = useQueryClient();
@@ -197,15 +219,16 @@ function CaixaPage() {
   };
 
   const buildPayload = (f: FormState) => {
-    const amount = parseNum(f.amount);
-    if (!amount || amount <= 0) throw new Error("Informe um valor válido.");
-    if (!f.service) throw new Error("Selecione um serviço.");
+    if (!f.services.length) throw new Error("Adicione pelo menos um serviço.");
+    const amount = sumServices(f.services);
+    if (!amount || amount <= 0) throw new Error("Valor total inválido.");
     const feePercent = effectiveFeePercent(f.payment_method, parseNum(f.fee_percent) || 0);
     return {
       amount,
       net_amount: computeNet(amount, f.payment_method, feePercent),
       fee_percent: feePercent,
-      service: f.service,
+      service: f.services.map((s) => s.name).join(" + "),
+      services: f.services,
       payment_method: f.payment_method,
       client_id: f.client_id === "none" || f.client_id === "avulso" ? null : f.client_id,
       date: f.date,
@@ -258,19 +281,20 @@ function CaixaPage() {
   });
 
   const showFee = isCard(form.payment_method);
-  const previewAmount = parseNum(form.amount) || 0;
+  const totalAmount = sumServices(form.services);
   const previewFee = effectiveFeePercent(form.payment_method, parseNum(form.fee_percent) || 0);
-  const previewNet = previewAmount > 0 ? computeNet(previewAmount, form.payment_method, previewFee) : 0;
+  const previewNet = totalAmount > 0 ? computeNet(totalAmount, form.payment_method, previewFee) : 0;
 
-  const onSelectService = (id: string) => {
-    const svc = services.find((s) => s.id === id);
-    setForm((prev) => ({
-      ...prev,
-      service: svc?.name ?? "",
-      amount: svc ? String(svc.price).replace(".", ",") : prev.amount,
-    }));
+  const [pickerServiceId, setPickerServiceId] = useState<string>("");
+  const addServiceToForm = () => {
+    const svc = services.find((s) => s.id === pickerServiceId);
+    if (!svc) return;
+    setForm((prev) => ({ ...prev, services: [...prev.services, { id: svc.id, name: svc.name, price: Number(svc.price) }] }));
+    setPickerServiceId("");
   };
-  const selectedServiceId = services.find((s) => s.name === form.service)?.id ?? "";
+  const removeServiceAt = (idx: number) => {
+    setForm((prev) => ({ ...prev, services: prev.services.filter((_, i) => i !== idx) }));
+  };
 
   // Combined chronological feed: transactions + movements
   type FeedItem =
@@ -308,26 +332,55 @@ function CaixaPage() {
             className="grid grid-cols-1 md:grid-cols-12 gap-3"
             onSubmit={(e) => { e.preventDefault(); createMut.mutate(form); }}
           >
-            <Field className="md:col-span-3" label="Serviço">
-              <Select value={selectedServiceId} onValueChange={onSelectService}>
-                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
-                <SelectContent>
-                  {services.length === 0 ? (
-                    <SelectItem value="__none" disabled>Nenhum serviço cadastrado</SelectItem>
-                  ) : services.map((s) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>
+            <Field className="md:col-span-12" label="Serviços">
+              <div className="flex flex-col sm:flex-row gap-2">
+                <div className="flex-1 min-w-0">
+                  <Select value={pickerServiceId} onValueChange={setPickerServiceId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione um serviço..." /></SelectTrigger>
+                    <SelectContent>
+                      {services.length === 0 ? (
+                        <SelectItem value="__none" disabled>Nenhum serviço cadastrado</SelectItem>
+                      ) : services.map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-gold/40 text-gold hover:bg-gold/10 hover:text-gold shrink-0"
+                  disabled={!pickerServiceId}
+                  onClick={addServiceToForm}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Adicionar serviço
+                </Button>
+              </div>
+              {form.services.length > 0 && (
+                <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-muted/20">
+                  {form.services.map((s, idx) => (
+                    <li key={`${s.id ?? s.name}-${idx}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <span className="truncate">{s.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="tabular-nums text-muted-foreground">{brl(Number(s.price))}</span>
+                        <Button
+                          type="button"
+                          size="icon"
+                          variant="ghost"
+                          className="h-8 w-8"
+                          onClick={() => removeServiceAt(idx)}
+                          title="Remover serviço"
+                        >
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </li>
                   ))}
-                </SelectContent>
-              </Select>
+                </ul>
+              )}
             </Field>
-            <Field className="md:col-span-2" label="Valor (R$)">
-              <Input
-                inputMode="decimal"
-                placeholder="0,00"
-                value={form.amount}
-                onChange={(e) => setForm({ ...form, amount: e.target.value })}
-                required
-              />
+            <Field className="md:col-span-2" label="Total (R$)">
+              <Input readOnly value={totalAmount ? brl(totalAmount) : "—"} className="bg-muted/40 font-medium tabular-nums" />
             </Field>
             <Field className="md:col-span-2" label="Pagamento">
               <Select
@@ -500,14 +553,7 @@ function CaixaPage() {
                       <div className="flex gap-1 justify-end">
                         <Button size="icon" variant="ghost" onClick={() => {
                           setEditing(item.data);
-                          setForm({
-                            amount: String(item.data.amount).replace(".", ","),
-                            service: item.data.service,
-                            payment_method: item.data.payment_method,
-                            fee_percent: String(item.data.fee_percent ?? defaultFeeFor(item.data.payment_method, cardFees)),
-                            client_id: item.data.client_id ?? "none",
-                            date: item.data.date,
-                          });
+                          setForm(formFromTx(item.data));
                         }}>
                           <Pencil className="h-4 w-4" />
                         </Button>
@@ -583,14 +629,7 @@ function CaixaPage() {
                             className="h-10 w-10"
                             onClick={() => {
                               setEditing(item.data);
-                              setForm({
-                                amount: String(item.data.amount).replace(".", ","),
-                                service: item.data.service,
-                                payment_method: item.data.payment_method,
-                                fee_percent: String(item.data.fee_percent ?? defaultFeeFor(item.data.payment_method, cardFees)),
-                                client_id: item.data.client_id ?? "none",
-                                date: item.data.date,
-                              });
+                              setForm(formFromTx(item.data));
                             }}
                           >
                             <Pencil className="h-5 w-5" />
@@ -676,19 +715,47 @@ function CaixaPage() {
         <DialogContent>
           <DialogHeader><DialogTitle className="font-display">Editar lançamento</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Valor (R$)">
-              <Input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+            <Field label="Total (R$)">
+              <Input readOnly value={totalAmount ? brl(totalAmount) : "—"} className="bg-muted/40 font-medium tabular-nums" />
             </Field>
             <Field label="Data">
               <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
             </Field>
-            <Field className="col-span-2" label="Serviço">
-              <Select value={selectedServiceId} onValueChange={onSelectService}>
-                <SelectTrigger><SelectValue placeholder={form.service || "Selecione..."} /></SelectTrigger>
-                <SelectContent>
-                  {services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <Field className="col-span-2" label="Serviços">
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
+                  <Select value={pickerServiceId} onValueChange={setPickerServiceId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione um serviço..." /></SelectTrigger>
+                    <SelectContent>
+                      {services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-gold/40 text-gold hover:bg-gold/10 hover:text-gold shrink-0"
+                  disabled={!pickerServiceId}
+                  onClick={addServiceToForm}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Adicionar
+                </Button>
+              </div>
+              {form.services.length > 0 && (
+                <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-muted/20">
+                  {form.services.map((s, idx) => (
+                    <li key={`${s.id ?? s.name}-${idx}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <span className="truncate">{s.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="tabular-nums text-muted-foreground">{brl(Number(s.price))}</span>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeServiceAt(idx)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Field>
             <Field label="Pagamento">
               <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultFeeFor(v, cardFees)) })}>

@@ -211,6 +211,7 @@ export type Database = {
           net_amount: number
           payment_method: string
           service: string
+          services: Json
           user_id: string
         }
         Insert: {
@@ -224,6 +225,7 @@ export type Database = {
           net_amount: number
           payment_method: string
           service: string
+          services?: Json
           user_id: string
         }
         Update: {
@@ -237,6 +239,7 @@ export type Database = {
           net_amount?: number
           payment_method?: string
           service?: string
+          services?: Json
           user_id?: string
         }
         Relationships: [
