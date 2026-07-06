@@ -538,14 +538,7 @@ function CaixaPage() {
                       <div className="flex gap-1 justify-end">
                         <Button size="icon" variant="ghost" onClick={() => {
                           setEditing(item.data);
-                          setForm({
-                            amount: String(item.data.amount).replace(".", ","),
-                            service: item.data.service,
-                            payment_method: item.data.payment_method,
-                            fee_percent: String(item.data.fee_percent ?? defaultFeeFor(item.data.payment_method, cardFees)),
-                            client_id: item.data.client_id ?? "none",
-                            date: item.data.date,
-                          });
+                          setForm(formFromTx(item.data));
                         }}>
                           <Pencil className="h-4 w-4" />
                         </Button>
