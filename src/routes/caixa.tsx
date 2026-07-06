@@ -700,19 +700,47 @@ function CaixaPage() {
         <DialogContent>
           <DialogHeader><DialogTitle className="font-display">Editar lançamento</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <Field label="Valor (R$)">
-              <Input value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
+            <Field label="Total (R$)">
+              <Input readOnly value={totalAmount ? brl(totalAmount) : "—"} className="bg-muted/40 font-medium tabular-nums" />
             </Field>
             <Field label="Data">
               <Input type="date" value={form.date} onChange={(e) => setForm({ ...form, date: e.target.value })} />
             </Field>
-            <Field className="col-span-2" label="Serviço">
-              <Select value={selectedServiceId} onValueChange={onSelectService}>
-                <SelectTrigger><SelectValue placeholder={form.service || "Selecione..."} /></SelectTrigger>
-                <SelectContent>
-                  {services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>)}
-                </SelectContent>
-              </Select>
+            <Field className="col-span-2" label="Serviços">
+              <div className="flex gap-2">
+                <div className="flex-1 min-w-0">
+                  <Select value={pickerServiceId} onValueChange={setPickerServiceId}>
+                    <SelectTrigger><SelectValue placeholder="Selecione um serviço..." /></SelectTrigger>
+                    <SelectContent>
+                      {services.map((s) => <SelectItem key={s.id} value={s.id}>{s.name} — {brl(Number(s.price))}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="border-gold/40 text-gold hover:bg-gold/10 hover:text-gold shrink-0"
+                  disabled={!pickerServiceId}
+                  onClick={addServiceToForm}
+                >
+                  <Plus className="h-4 w-4 mr-1" /> Adicionar
+                </Button>
+              </div>
+              {form.services.length > 0 && (
+                <ul className="mt-2 divide-y divide-border rounded-md border border-border bg-muted/20">
+                  {form.services.map((s, idx) => (
+                    <li key={`${s.id ?? s.name}-${idx}`} className="flex items-center justify-between gap-2 px-3 py-2 text-sm">
+                      <span className="truncate">{s.name}</span>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="tabular-nums text-muted-foreground">{brl(Number(s.price))}</span>
+                        <Button type="button" size="icon" variant="ghost" className="h-8 w-8" onClick={() => removeServiceAt(idx)}>
+                          <Trash2 className="h-4 w-4 text-destructive" />
+                        </Button>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+              )}
             </Field>
             <Field label="Pagamento">
               <Select value={form.payment_method} onValueChange={(v) => setForm({ ...form, payment_method: v, fee_percent: String(defaultFeeFor(v, cardFees)) })}>
