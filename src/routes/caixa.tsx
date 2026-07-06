@@ -204,15 +204,16 @@ function CaixaPage() {
   };
 
   const buildPayload = (f: FormState) => {
-    const amount = parseNum(f.amount);
-    if (!amount || amount <= 0) throw new Error("Informe um valor válido.");
-    if (!f.service) throw new Error("Selecione um serviço.");
+    if (!f.services.length) throw new Error("Adicione pelo menos um serviço.");
+    const amount = sumServices(f.services);
+    if (!amount || amount <= 0) throw new Error("Valor total inválido.");
     const feePercent = effectiveFeePercent(f.payment_method, parseNum(f.fee_percent) || 0);
     return {
       amount,
       net_amount: computeNet(amount, f.payment_method, feePercent),
       fee_percent: feePercent,
-      service: f.service,
+      service: f.services.map((s) => s.name).join(" + "),
+      services: f.services,
       payment_method: f.payment_method,
       client_id: f.client_id === "none" || f.client_id === "avulso" ? null : f.client_id,
       date: f.date,
