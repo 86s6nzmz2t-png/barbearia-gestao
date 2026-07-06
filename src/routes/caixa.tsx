@@ -266,19 +266,20 @@ function CaixaPage() {
   });
 
   const showFee = isCard(form.payment_method);
-  const previewAmount = parseNum(form.amount) || 0;
+  const totalAmount = sumServices(form.services);
   const previewFee = effectiveFeePercent(form.payment_method, parseNum(form.fee_percent) || 0);
-  const previewNet = previewAmount > 0 ? computeNet(previewAmount, form.payment_method, previewFee) : 0;
+  const previewNet = totalAmount > 0 ? computeNet(totalAmount, form.payment_method, previewFee) : 0;
 
-  const onSelectService = (id: string) => {
-    const svc = services.find((s) => s.id === id);
-    setForm((prev) => ({
-      ...prev,
-      service: svc?.name ?? "",
-      amount: svc ? String(svc.price).replace(".", ",") : prev.amount,
-    }));
+  const [pickerServiceId, setPickerServiceId] = useState<string>("");
+  const addServiceToForm = () => {
+    const svc = services.find((s) => s.id === pickerServiceId);
+    if (!svc) return;
+    setForm((prev) => ({ ...prev, services: [...prev.services, { id: svc.id, name: svc.name, price: Number(svc.price) }] }));
+    setPickerServiceId("");
   };
-  const selectedServiceId = services.find((s) => s.name === form.service)?.id ?? "";
+  const removeServiceAt = (idx: number) => {
+    setForm((prev) => ({ ...prev, services: prev.services.filter((_, i) => i !== idx) }));
+  };
 
   // Combined chronological feed: transactions + movements
   type FeedItem =
