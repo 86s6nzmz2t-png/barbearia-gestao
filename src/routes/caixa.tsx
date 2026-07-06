@@ -47,12 +47,15 @@ export const Route = createFileRoute("/caixa")({
   component: CaixaPage,
 });
 
+type ServiceLine = { id?: string; name: string; price: number };
+
 type TxRow = {
   id: string;
   amount: number;
   net_amount: number;
   fee_percent: number;
   service: string;
+  services: ServiceLine[] | null;
   payment_method: string;
   client_id: string | null;
   date: string;
