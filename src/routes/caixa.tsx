@@ -99,6 +99,21 @@ function sumServices(list: ServiceLine[]) {
   return Math.round(list.reduce((s, x) => s + Number(x.price || 0), 0) * 100) / 100;
 }
 
+function formFromTx(tx: TxRow): FormState {
+  const raw = Array.isArray(tx.services) ? tx.services : [];
+  const services: ServiceLine[] = raw.length > 0
+    ? raw.map((s) => ({ id: s.id, name: s.name, price: Number(s.price) }))
+    : [{ name: tx.service, price: Number(tx.amount) }];
+  return {
+    services,
+    amount: String(tx.amount).replace(".", ","),
+    payment_method: tx.payment_method,
+    fee_percent: String(tx.fee_percent ?? 0),
+    client_id: tx.client_id ?? "none",
+    date: tx.date,
+  };
+}
+
 function CaixaPage() {
   const qc = useQueryClient();
   const userId = useUserId();
