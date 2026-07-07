@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/table";
 import { brl, paymentLabel } from "@/lib/finance";
 
+type ServiceLine = { id?: string; name: string; price?: number };
 type HistoryTx = {
   id: string;
   date: string;
   service: string;
+  services: ServiceLine[] | null;
   payment_method: string;
   amount: number;
 };
@@ -44,7 +46,7 @@ export function ClientHistoryDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
-        .select("id, date, service, payment_method, amount")
+        .select("id, date, service, services, payment_method, amount")
         .eq("client_id", client!.id)
         .order("date", { ascending: false });
       if (error) throw error;
@@ -104,28 +106,37 @@ export function ClientHistoryDialog({
             <TableHeader>
               <TableRow>
                 <TableHead>Data</TableHead>
-                <TableHead>Serviço</TableHead>
+                <TableHead>Serviços</TableHead>
                 <TableHead>Pagamento</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
               ) : txs.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhum atendimento registrado.</TableCell></TableRow>
-              ) : txs.map((t) => (
-                <TableRow key={t.id}>
-                  <TableCell className="whitespace-nowrap text-muted-foreground">
-                    {format(new Date(t.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell>{t.service}</TableCell>
-                  <TableCell>
-                    <span className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">{paymentLabel(t.payment_method)}</span>
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums text-gold">{brl(Number(t.amount))}</TableCell>
-                </TableRow>
-              ))}
+                <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum atendimento registrado.</TableCell></TableRow>
+              ) : txs.map((t) => {
+                const names = (t.services && t.services.length > 0)
+                  ? t.services.map((s) => s.name).join(" + ")
+                  : t.service;
+                return (
+                  <TableRow key={t.id}>
+                    <TableCell className="whitespace-nowrap text-muted-foreground">
+                      {format(new Date(t.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
+                    </TableCell>
+                    <TableCell>{names}</TableCell>
+                    <TableCell>
+                      <span className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">{paymentLabel(t.payment_method)}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-xs px-2 py-1 rounded bg-gold/15 text-gold border border-gold/30">Pago</span>
+                    </TableCell>
+                    <TableCell className="text-right tabular-nums text-gold">{brl(Number(t.amount))}</TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </div>
