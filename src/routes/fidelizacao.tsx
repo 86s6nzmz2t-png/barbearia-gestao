@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/app-shell";
-import { ClientHistoryDialog, type HistoryClient } from "@/components/client-history-dialog";
+import { brl, paymentLabel } from "@/lib/finance";
 
 export const Route = createFileRoute("/fidelizacao")({
   head: () => ({
