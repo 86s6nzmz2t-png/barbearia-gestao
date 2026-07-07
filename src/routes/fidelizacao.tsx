@@ -33,7 +33,7 @@ type Client = {
 type LastTx = { client_id: string; date: string };
 
 function FidelizacaoPage() {
-  const [detail, setDetail] = useState<HistoryClient | null>(null);
+  const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
 
   const { data: clients = [] } = useQuery({
