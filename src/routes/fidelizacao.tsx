@@ -88,6 +88,16 @@ function FidelizacaoPage() {
         subtitle="Clientes sem visita há mais de 30 dias — chame de volta pelo WhatsApp."
       />
 
+      <SearchClientPanel
+        clients={clients}
+        lastByClient={lastByClient}
+        search={search}
+        setSearch={setSearch}
+        onSelect={(c) => setDetail(c)}
+      />
+
+
+
       {inactive.length === 0 ? (
         <Card>
           <CardContent className="py-16 text-center text-muted-foreground">
