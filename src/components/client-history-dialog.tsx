@@ -46,7 +46,7 @@ export function ClientHistoryDialog({
     queryFn: async () => {
       const { data, error } = await supabase
         .from("transactions")
-        .select("id, date, service, payment_method, amount")
+        .select("id, date, service, services, payment_method, amount")
         .eq("client_id", client!.id)
         .order("date", { ascending: false });
       if (error) throw error;
