@@ -13,10 +13,12 @@ import {
 } from "@/components/ui/table";
 import { brl, paymentLabel } from "@/lib/finance";
 
+type ServiceLine = { id?: string; name: string; price?: number };
 type HistoryTx = {
   id: string;
   date: string;
   service: string;
+  services: ServiceLine[] | null;
   payment_method: string;
   amount: number;
 };
