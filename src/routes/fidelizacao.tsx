@@ -3,14 +3,14 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { differenceInCalendarDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Heart, MessageCircle, Search, User } from "lucide-react";
+import { CalendarClock, Heart, MessageCircle, Search, User, X } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { PageHeader } from "@/components/app-shell";
-import { ClientHistoryDialog, type HistoryClient } from "@/components/client-history-dialog";
+import { brl, paymentLabel } from "@/lib/finance";
 
 export const Route = createFileRoute("/fidelizacao")({
   head: () => ({
@@ -33,7 +33,7 @@ type Client = {
 type LastTx = { client_id: string; date: string };
 
 function FidelizacaoPage() {
-  const [detail, setDetail] = useState<HistoryClient | null>(null);
+  const [selected, setSelected] = useState<Client | null>(null);
   const [search, setSearch] = useState("");
 
   const { data: clients = [] } = useQuery({
@@ -93,8 +93,12 @@ function FidelizacaoPage() {
         lastByClient={lastByClient}
         search={search}
         setSearch={setSearch}
-        onSelect={(c) => setDetail(c)}
+        selected={selected}
+        onSelect={(c) => setSelected(c)}
+        onClear={() => setSelected(null)}
       />
+
+
 
 
 
@@ -123,7 +127,7 @@ function FidelizacaoPage() {
                     <div className="min-w-0 flex-1">
                       <button
                         className="font-display text-lg leading-tight truncate text-left hover:text-gold transition-colors"
-                        onClick={() => setDetail(client)}
+                        onClick={() => setSelected(client)}
                       >
                         {client.name}
                       </button>
@@ -164,7 +168,6 @@ function FidelizacaoPage() {
         </div>
       )}
 
-      <ClientHistoryDialog client={detail} onOpenChange={(o) => !o && setDetail(null)} />
     </div>
   );
 }
@@ -174,13 +177,17 @@ function SearchClientPanel({
   lastByClient,
   search,
   setSearch,
+  selected,
   onSelect,
+  onClear,
 }: {
   clients: Client[];
   lastByClient: Record<string, string>;
   search: string;
   setSearch: (v: string) => void;
+  selected: Client | null;
   onSelect: (c: Client) => void;
+  onClear: () => void;
 }) {
   const q = search.trim().toLowerCase();
   const results = q
@@ -195,18 +202,18 @@ function SearchClientPanel({
     : [];
 
   return (
-    <Card className="mb-6">
+    <Card className="mb-6 border-gold/30">
       <CardContent className="pt-5">
         <div className="relative">
           <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar cliente por nome ou telefone para ver histórico de fidelidade..."
-            className="pl-9"
+            placeholder="Buscar cliente para fidelidade..."
+            className="pl-9 h-11"
           />
         </div>
-        {q && (
+        {q && !selected && (
           <div className="mt-3 divide-y divide-border rounded-md border border-border">
             {results.length === 0 ? (
               <p className="p-3 text-sm text-muted-foreground text-center">Nenhum cliente encontrado.</p>
@@ -243,8 +250,133 @@ function SearchClientPanel({
             )}
           </div>
         )}
+        {selected && <LoyaltyPanel client={selected} onClear={onClear} />}
       </CardContent>
     </Card>
   );
 }
+
+type LoyaltyTx = {
+  id: string;
+  date: string;
+  service: string;
+  services: { id?: string; name: string; price?: number }[] | null;
+  payment_method: string;
+  amount: number;
+};
+
+function LoyaltyPanel({ client, onClear }: { client: Client; onClear: () => void }) {
+  const { data: txs = [], isLoading } = useQuery({
+    queryKey: ["client-history", client.id],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("transactions")
+        .select("id, date, service, services, payment_method, amount")
+        .eq("client_id", client.id)
+        .order("date", { ascending: false });
+      if (error) throw error;
+      return (data ?? []) as LoyaltyTx[];
+    },
+  });
+
+  const total = txs.length;
+  const lastDate = txs[0]?.date ?? null;
+  const totalSpent = txs.reduce((s, t) => s + Number(t.amount), 0);
+
+  return (
+    <div className="mt-4 rounded-lg border border-gold/40 bg-gradient-to-br from-gold/5 to-transparent p-4 md:p-5">
+      <div className="flex items-start gap-3">
+        <div className="h-11 w-11 rounded-full bg-gold/15 border border-gold/40 flex items-center justify-center shrink-0">
+          <User className="h-5 w-5 text-gold" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <p className="font-display text-xl leading-tight truncate">{client.name}</p>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            {client.whatsapp || client.phone || "Sem telefone"}
+          </p>
+        </div>
+        <button
+          onClick={onClear}
+          className="text-muted-foreground hover:text-foreground transition-colors"
+          aria-label="Limpar seleção"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-3 gap-3 mt-4">
+        <Metric
+          icon={<Heart className="h-4 w-4 text-gold" />}
+          label="Total de visitas"
+          value={isLoading ? "…" : String(total)}
+        />
+        <Metric
+          icon={<CalendarClock className="h-4 w-4 text-gold" />}
+          label="Última visita"
+          value={
+            isLoading
+              ? "…"
+              : lastDate
+                ? format(new Date(lastDate + "T00:00:00"), "dd/MM/yy", { locale: ptBR })
+                : "—"
+          }
+        />
+        <Metric
+          icon={<span className="text-gold text-xs font-semibold">R$</span>}
+          label="Total gasto"
+          value={isLoading ? "…" : brl(totalSpent)}
+        />
+      </div>
+
+      <div className="mt-4">
+        <p className="text-[11px] uppercase tracking-wider text-muted-foreground mb-2">
+          Histórico rápido
+        </p>
+        {isLoading ? (
+          <p className="text-sm text-muted-foreground py-3 text-center">Carregando…</p>
+        ) : txs.length === 0 ? (
+          <p className="text-sm text-muted-foreground py-3 text-center italic">
+            Nenhum atendimento registrado ainda.
+          </p>
+        ) : (
+          <ul className="divide-y divide-border rounded-md border border-border max-h-72 overflow-y-auto">
+            {txs.map((t) => {
+              const names =
+                t.services && t.services.length > 0
+                  ? t.services.map((s) => s.name).join(" + ")
+                  : t.service;
+              return (
+                <li key={t.id} className="flex items-center gap-3 px-3 py-2.5">
+                  <span className="text-xs text-muted-foreground tabular-nums whitespace-nowrap w-16">
+                    {format(new Date(t.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
+                  </span>
+                  <span className="flex-1 text-sm truncate">{names}</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-secondary text-secondary-foreground whitespace-nowrap">
+                    {paymentLabel(t.payment_method)}
+                  </span>
+                  <span className="text-sm tabular-nums text-gold whitespace-nowrap">
+                    {brl(Number(t.amount))}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+  return (
+    <div className="rounded-md border border-border bg-secondary/40 p-3">
+      <div className="flex items-center gap-1.5 text-[11px] uppercase tracking-wider text-muted-foreground">
+        {icon}
+        <span className="truncate">{label}</span>
+      </div>
+      <p className="mt-1 font-display text-lg text-foreground">{value}</p>
+    </div>
+  );
+}
+
 
