@@ -3,7 +3,7 @@ import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { differenceInCalendarDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Heart, MessageCircle, User } from "lucide-react";
+import { Heart, MessageCircle, Search, User } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
