@@ -127,7 +127,7 @@ function FidelizacaoPage() {
                     <div className="min-w-0 flex-1">
                       <button
                         className="font-display text-lg leading-tight truncate text-left hover:text-gold transition-colors"
-                        onClick={() => setDetail(client)}
+                        onClick={() => setSelected(client)}
                       >
                         {client.name}
                       </button>
