@@ -93,8 +93,12 @@ function FidelizacaoPage() {
         lastByClient={lastByClient}
         search={search}
         setSearch={setSearch}
-        onSelect={(c) => setDetail(c)}
+        selected={selected}
+        onSelect={(c) => setSelected(c)}
+        onClear={() => setSelected(null)}
       />
+
+
 
 
 
