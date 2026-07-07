@@ -168,3 +168,83 @@ function FidelizacaoPage() {
     </div>
   );
 }
+
+function SearchClientPanel({
+  clients,
+  lastByClient,
+  search,
+  setSearch,
+  onSelect,
+}: {
+  clients: Client[];
+  lastByClient: Record<string, string>;
+  search: string;
+  setSearch: (v: string) => void;
+  onSelect: (c: Client) => void;
+}) {
+  const q = search.trim().toLowerCase();
+  const results = q
+    ? clients
+        .filter(
+          (c) =>
+            c.name.toLowerCase().includes(q) ||
+            (c.phone ?? "").toLowerCase().includes(q) ||
+            (c.whatsapp ?? "").toLowerCase().includes(q),
+        )
+        .slice(0, 8)
+    : [];
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="pt-5">
+        <div className="relative">
+          <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Buscar cliente por nome ou telefone para ver histórico de fidelidade..."
+            className="pl-9"
+          />
+        </div>
+        {q && (
+          <div className="mt-3 divide-y divide-border rounded-md border border-border">
+            {results.length === 0 ? (
+              <p className="p-3 text-sm text-muted-foreground text-center">Nenhum cliente encontrado.</p>
+            ) : (
+              results.map((c) => {
+                const lastDate = lastByClient[c.id];
+                const days = lastDate
+                  ? differenceInCalendarDays(new Date(), new Date(lastDate + "T00:00:00"))
+                  : null;
+                return (
+                  <button
+                    key={c.id}
+                    onClick={() => {
+                      onSelect(c);
+                      setSearch("");
+                    }}
+                    className="w-full flex items-center gap-3 p-3 text-left hover:bg-secondary/50 transition-colors"
+                  >
+                    <div className="h-9 w-9 rounded-full bg-secondary border border-border flex items-center justify-center shrink-0">
+                      <User className="h-4 w-4 text-gold" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-medium truncate">{c.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">
+                        {c.whatsapp || c.phone || "Sem telefone"}
+                      </p>
+                    </div>
+                    <span className="text-xs text-muted-foreground shrink-0">
+                      {days === null ? "Nunca veio" : days === 0 ? "Hoje" : `${days}d`}
+                    </span>
+                  </button>
+                );
+              })
+            )}
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
+}
+
