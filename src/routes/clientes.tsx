@@ -77,7 +77,8 @@ function ClientesPage() {
       (c) =>
         c.name.toLowerCase().includes(q) ||
         (c.phone ?? "").toLowerCase().includes(q) ||
-        (c.whatsapp ?? "").toLowerCase().includes(q),
+        (c.whatsapp ?? "").toLowerCase().includes(q) ||
+        (c.notes ?? "").toLowerCase().includes(q),
     );
   }, [clients, search]);
 
