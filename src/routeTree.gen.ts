@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as ServicosRouteImport } from './routes/servicos'
 import { Route as PendenteRouteImport } from './routes/pendente'
 import { Route as FidelizacaoRouteImport } from './routes/fidelizacao'
+import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CaixaRouteImport } from './routes/caixa'
@@ -31,6 +32,11 @@ const PendenteRoute = PendenteRouteImport.update({
 const FidelizacaoRoute = FidelizacaoRouteImport.update({
   id: '/fidelizacao',
   path: '/fidelizacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipeRoute = EquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
@@ -65,6 +71,7 @@ export interface FileRoutesByFullPath {
   '/caixa': typeof CaixaRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/equipe': typeof EquipeRoute
   '/fidelizacao': typeof FidelizacaoRoute
   '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
@@ -75,6 +82,7 @@ export interface FileRoutesByTo {
   '/caixa': typeof CaixaRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/equipe': typeof EquipeRoute
   '/fidelizacao': typeof FidelizacaoRoute
   '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
@@ -86,6 +94,7 @@ export interface FileRoutesById {
   '/caixa': typeof CaixaRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/equipe': typeof EquipeRoute
   '/fidelizacao': typeof FidelizacaoRoute
   '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
@@ -98,6 +107,7 @@ export interface FileRouteTypes {
     | '/caixa'
     | '/clientes'
     | '/configuracoes'
+    | '/equipe'
     | '/fidelizacao'
     | '/pendente'
     | '/servicos'
@@ -108,6 +118,7 @@ export interface FileRouteTypes {
     | '/caixa'
     | '/clientes'
     | '/configuracoes'
+    | '/equipe'
     | '/fidelizacao'
     | '/pendente'
     | '/servicos'
@@ -118,6 +129,7 @@ export interface FileRouteTypes {
     | '/caixa'
     | '/clientes'
     | '/configuracoes'
+    | '/equipe'
     | '/fidelizacao'
     | '/pendente'
     | '/servicos'
@@ -129,6 +141,7 @@ export interface RootRouteChildren {
   CaixaRoute: typeof CaixaRoute
   ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  EquipeRoute: typeof EquipeRoute
   FidelizacaoRoute: typeof FidelizacaoRoute
   PendenteRoute: typeof PendenteRoute
   ServicosRoute: typeof ServicosRoute
@@ -155,6 +168,13 @@ declare module '@tanstack/react-router' {
       path: '/fidelizacao'
       fullPath: '/fidelizacao'
       preLoaderRoute: typeof FidelizacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipe': {
+      id: '/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof EquipeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracoes': {
@@ -201,6 +221,7 @@ const rootRouteChildren: RootRouteChildren = {
   CaixaRoute: CaixaRoute,
   ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  EquipeRoute: EquipeRoute,
   FidelizacaoRoute: FidelizacaoRoute,
   PendenteRoute: PendenteRoute,
   ServicosRoute: ServicosRoute,
