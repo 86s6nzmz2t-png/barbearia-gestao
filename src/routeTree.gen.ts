@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as PendenteRouteImport } from './routes/pendente'
 import { Route as FidelizacaoRouteImport } from './routes/fidelizacao'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
@@ -20,6 +21,11 @@ import { Route as IndexRouteImport } from './routes/index'
 const ServicosRoute = ServicosRouteImport.update({
   id: '/servicos',
   path: '/servicos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PendenteRoute = PendenteRouteImport.update({
+  id: '/pendente',
+  path: '/pendente',
   getParentRoute: () => rootRouteImport,
 } as any)
 const FidelizacaoRoute = FidelizacaoRouteImport.update({
@@ -60,6 +66,7 @@ export interface FileRoutesByFullPath {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/fidelizacao': typeof FidelizacaoRoute
+  '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesByTo {
@@ -69,6 +76,7 @@ export interface FileRoutesByTo {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/fidelizacao': typeof FidelizacaoRoute
+  '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesById {
@@ -79,6 +87,7 @@ export interface FileRoutesById {
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/fidelizacao': typeof FidelizacaoRoute
+  '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRouteTypes {
@@ -90,6 +99,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/fidelizacao'
+    | '/pendente'
     | '/servicos'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -99,6 +109,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/fidelizacao'
+    | '/pendente'
     | '/servicos'
   id:
     | '__root__'
@@ -108,6 +119,7 @@ export interface FileRouteTypes {
     | '/clientes'
     | '/configuracoes'
     | '/fidelizacao'
+    | '/pendente'
     | '/servicos'
   fileRoutesById: FileRoutesById
 }
@@ -118,6 +130,7 @@ export interface RootRouteChildren {
   ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   FidelizacaoRoute: typeof FidelizacaoRoute
+  PendenteRoute: typeof PendenteRoute
   ServicosRoute: typeof ServicosRoute
 }
 
@@ -128,6 +141,13 @@ declare module '@tanstack/react-router' {
       path: '/servicos'
       fullPath: '/servicos'
       preLoaderRoute: typeof ServicosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/pendente': {
+      id: '/pendente'
+      path: '/pendente'
+      fullPath: '/pendente'
+      preLoaderRoute: typeof PendenteRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/fidelizacao': {
@@ -182,6 +202,7 @@ const rootRouteChildren: RootRouteChildren = {
   ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   FidelizacaoRoute: FidelizacaoRoute,
+  PendenteRoute: PendenteRoute,
   ServicosRoute: ServicosRoute,
 }
 export const routeTree = rootRouteImport
