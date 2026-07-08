@@ -1,15 +1,24 @@
 import { Link, Outlet, useNavigate, useRouterState } from "@tanstack/react-router";
 import { useEffect } from "react";
-import { LayoutDashboard, LogOut, Wallet, Users, Scissors, Settings, Heart } from "lucide-react";
+import {
+  LayoutDashboard,
+  LogOut,
+  Wallet,
+  Users,
+  Scissors,
+  Settings,
+  Heart,
+  ShieldCheck,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { useAuth } from "@/lib/auth";
+import { useAuth, useIsAdmin } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 
-const nav = [
+const baseNav = [
   { to: "/", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { to: "/caixa", label: "Caixa", icon: Wallet, exact: false },
   { to: "/clientes", label: "Clientes", icon: Users, exact: false },
@@ -18,19 +27,40 @@ const nav = [
   { to: "/configuracoes", label: "Config", icon: Settings, exact: false },
 ] as const;
 
+const adminNavItem = {
+  to: "/equipe",
+  label: "Equipe",
+  icon: ShieldCheck,
+  exact: false,
+} as const;
+
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
-  const { user, loading } = useAuth();
+  const { user, profile, loading } = useAuth();
+  const isAdmin = useIsAdmin();
 
   const isAuthRoute = pathname === "/auth";
+  const isPendingRoute = pathname === "/pendente";
+  const needsApproval =
+    !!user && !!profile && (profile.status === "pendente" || profile.status === "bloqueado");
 
   useEffect(() => {
     if (loading) return;
-    if (!user && !isAuthRoute) navigate({ to: "/auth", replace: true });
-  }, [loading, user, isAuthRoute, navigate]);
+    if (!user && !isAuthRoute) {
+      navigate({ to: "/auth", replace: true });
+      return;
+    }
+    if (user && needsApproval && !isPendingRoute) {
+      navigate({ to: "/pendente", replace: true });
+      return;
+    }
+    if (user && !needsApproval && isPendingRoute) {
+      navigate({ to: "/", replace: true });
+    }
+  }, [loading, user, needsApproval, isAuthRoute, isPendingRoute, navigate]);
 
-  if (isAuthRoute || !user) {
+  if (isAuthRoute || !user || isPendingRoute || needsApproval) {
     return (
       <>
         <Outlet />
@@ -47,6 +77,8 @@ export function AppShell() {
 
   const isActive = (to: string, exact: boolean) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
+
+  const nav = isAdmin ? [...baseNav, adminNavItem] : baseNav;
 
   return (
     <div className="min-h-screen flex w-full">
@@ -115,7 +147,7 @@ export function AppShell() {
 
       {/* Bottom nav mobile */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur border-t border-sidebar-border">
-        <div className="grid grid-cols-6">
+        <div className={cn("grid", nav.length === 7 ? "grid-cols-7" : "grid-cols-6")}>
           {nav.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to, item.exact);

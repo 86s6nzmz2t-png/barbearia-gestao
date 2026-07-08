@@ -10,7 +10,9 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ServicosRouteImport } from './routes/servicos'
+import { Route as PendenteRouteImport } from './routes/pendente'
 import { Route as FidelizacaoRouteImport } from './routes/fidelizacao'
+import { Route as EquipeRouteImport } from './routes/equipe'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ClientesRouteImport } from './routes/clientes'
 import { Route as CaixaRouteImport } from './routes/caixa'
@@ -22,9 +24,19 @@ const ServicosRoute = ServicosRouteImport.update({
   path: '/servicos',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PendenteRoute = PendenteRouteImport.update({
+  id: '/pendente',
+  path: '/pendente',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const FidelizacaoRoute = FidelizacaoRouteImport.update({
   id: '/fidelizacao',
   path: '/fidelizacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EquipeRoute = EquipeRouteImport.update({
+  id: '/equipe',
+  path: '/equipe',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
@@ -59,7 +71,9 @@ export interface FileRoutesByFullPath {
   '/caixa': typeof CaixaRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/equipe': typeof EquipeRoute
   '/fidelizacao': typeof FidelizacaoRoute
+  '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesByTo {
@@ -68,7 +82,9 @@ export interface FileRoutesByTo {
   '/caixa': typeof CaixaRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/equipe': typeof EquipeRoute
   '/fidelizacao': typeof FidelizacaoRoute
+  '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRoutesById {
@@ -78,7 +94,9 @@ export interface FileRoutesById {
   '/caixa': typeof CaixaRoute
   '/clientes': typeof ClientesRoute
   '/configuracoes': typeof ConfiguracoesRoute
+  '/equipe': typeof EquipeRoute
   '/fidelizacao': typeof FidelizacaoRoute
+  '/pendente': typeof PendenteRoute
   '/servicos': typeof ServicosRoute
 }
 export interface FileRouteTypes {
@@ -89,7 +107,9 @@ export interface FileRouteTypes {
     | '/caixa'
     | '/clientes'
     | '/configuracoes'
+    | '/equipe'
     | '/fidelizacao'
+    | '/pendente'
     | '/servicos'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -98,7 +118,9 @@ export interface FileRouteTypes {
     | '/caixa'
     | '/clientes'
     | '/configuracoes'
+    | '/equipe'
     | '/fidelizacao'
+    | '/pendente'
     | '/servicos'
   id:
     | '__root__'
@@ -107,7 +129,9 @@ export interface FileRouteTypes {
     | '/caixa'
     | '/clientes'
     | '/configuracoes'
+    | '/equipe'
     | '/fidelizacao'
+    | '/pendente'
     | '/servicos'
   fileRoutesById: FileRoutesById
 }
@@ -117,7 +141,9 @@ export interface RootRouteChildren {
   CaixaRoute: typeof CaixaRoute
   ClientesRoute: typeof ClientesRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
+  EquipeRoute: typeof EquipeRoute
   FidelizacaoRoute: typeof FidelizacaoRoute
+  PendenteRoute: typeof PendenteRoute
   ServicosRoute: typeof ServicosRoute
 }
 
@@ -130,11 +156,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ServicosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/pendente': {
+      id: '/pendente'
+      path: '/pendente'
+      fullPath: '/pendente'
+      preLoaderRoute: typeof PendenteRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/fidelizacao': {
       id: '/fidelizacao'
       path: '/fidelizacao'
       fullPath: '/fidelizacao'
       preLoaderRoute: typeof FidelizacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/equipe': {
+      id: '/equipe'
+      path: '/equipe'
+      fullPath: '/equipe'
+      preLoaderRoute: typeof EquipeRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/configuracoes': {
@@ -181,7 +221,9 @@ const rootRouteChildren: RootRouteChildren = {
   CaixaRoute: CaixaRoute,
   ClientesRoute: ClientesRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
+  EquipeRoute: EquipeRoute,
   FidelizacaoRoute: FidelizacaoRoute,
+  PendenteRoute: PendenteRoute,
   ServicosRoute: ServicosRoute,
 }
 export const routeTree = rootRouteImport
