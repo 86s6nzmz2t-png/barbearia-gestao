@@ -77,7 +77,8 @@ function ClientesPage() {
       (c) =>
         c.name.toLowerCase().includes(q) ||
         (c.phone ?? "").toLowerCase().includes(q) ||
-        (c.whatsapp ?? "").toLowerCase().includes(q),
+        (c.whatsapp ?? "").toLowerCase().includes(q) ||
+        (c.notes ?? "").toLowerCase().includes(q),
     );
   }, [clients, search]);
 
@@ -198,7 +199,7 @@ function ClientesPage() {
           <Input
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            placeholder="Buscar por nome ou telefone..."
+            placeholder="Buscar por nome, telefone ou preferências..."
             className="pl-9"
           />
         </div>
