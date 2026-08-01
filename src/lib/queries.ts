@@ -91,3 +91,24 @@ export function useTodayCashSession() {
     },
   });
 }
+
+export type Barbeiro = {
+  id: string;
+  nome: string;
+  telefone: string | null;
+  porcentagem_comissao: number;
+  ativo: boolean;
+};
+
+export function useBarbeiros(onlyActive = false) {
+  return useQuery({
+    queryKey: ["barbeiros", onlyActive ? "ativos" : "todos"],
+    queryFn: async () => {
+      let q = supabase.from("barbeiros").select("*").order("nome");
+      if (onlyActive) q = q.eq("ativo", true);
+      const { data, error } = await q;
+      if (error) throw error;
+      return (data ?? []) as Barbeiro[];
+    },
+  });
+}
