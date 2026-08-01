@@ -34,6 +34,7 @@ function SettingsPage() {
     <div className="max-w-5xl mx-auto px-5 md:px-10 py-8 md:py-12 space-y-6">
       <PageHeader title="Configurações" subtitle="Defina taxas padrão e gerencie despesas fixas." />
       <CardFeesSetting />
+      <BarbeirosSection />
       <ExpensesSection />
     </div>
   );
