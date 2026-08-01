@@ -309,6 +309,88 @@ function Dashboard() {
 
       <Card className="mb-8">
         <CardHeader>
+          <CardTitle className="font-display text-xl font-medium flex items-center gap-2">
+            <Users className="h-4 w-4 text-gold" /> Resumo de Comissões por Barbeiro
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Barbeiro</TableHead>
+                  <TableHead className="text-right">Atend.</TableHead>
+                  <TableHead className="text-right">Total faturado</TableHead>
+                  <TableHead className="text-right">% Comissão</TableHead>
+                  <TableHead className="text-right">Comissão (R$)</TableHead>
+                  <TableHead className="text-right">Líquido barbearia</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {commissions.rows.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    Nenhum atendimento com barbeiro no período.
+                  </TableCell></TableRow>
+                ) : commissions.rows.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.nome}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{r.count}</TableCell>
+                    <TableCell className="text-right tabular-nums">{brl(r.gross)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{r.pct}%</TableCell>
+                    <TableCell className="text-right tabular-nums text-gold">{brl(r.commission)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{brl(r.shop)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="md:hidden space-y-3">
+            {commissions.rows.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Nenhum atendimento com barbeiro no período.</p>
+            ) : commissions.rows.map((r) => (
+              <div key={r.id} className="rounded-xl border border-border bg-secondary/40 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-display text-base font-semibold">{r.nome}</h3>
+                  <span className="text-xs text-muted-foreground">{r.count} atend. · {r.pct}%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Faturado</p>
+                    <p className="tabular-nums font-medium">{brl(r.gross)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Comissão</p>
+                    <p className="tabular-nums font-medium text-gold">{brl(r.commission)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Barbearia</p>
+                    <p className="tabular-nums font-medium">{brl(r.shop)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {(commissions.rows.length > 0 || commissions.unassignedCount > 0) && (
+            <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="text-muted-foreground">
+                Total de comissões no período: <span className="text-gold font-medium tabular-nums">{brl(commissions.totalCommission)}</span>
+              </span>
+              {commissions.unassignedCount > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {commissions.unassignedCount} lançamento(s) sem barbeiro ({brl(commissions.unassignedGross)})
+                </span>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
+
+      <Card className="mb-8">
+        <CardHeader>
           <CardTitle className="font-display text-xl font-medium">Evolução do faturamento</CardTitle>
         </CardHeader>
         <CardContent>
