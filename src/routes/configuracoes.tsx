@@ -200,3 +200,164 @@ function ExpensesSection() {
     </Card>
   );
 }
+
+type BarbeiroForm = { nome: string; telefone: string; porcentagem_comissao: string; ativo: boolean };
+
+function emptyBarbeiro(): BarbeiroForm {
+  return { nome: "", telefone: "", porcentagem_comissao: "50", ativo: true };
+}
+
+function BarbeirosSection() {
+  const qc = useQueryClient();
+  const userId = useUserId();
+  const { data: barbeiros = [], isLoading } = useBarbeiros();
+  const [form, setForm] = useState<BarbeiroForm>(() => emptyBarbeiro());
+  const [editingId, setEditingId] = useState<string | null>(null);
+
+  const invalidate = () => qc.invalidateQueries({ queryKey: ["barbeiros"] });
+
+  const payload = (f: BarbeiroForm) => {
+    const pct = parseFloat(f.porcentagem_comissao.replace(",", "."));
+    if (!f.nome.trim()) throw new Error("Nome do barbeiro obrigatório");
+    if (!Number.isFinite(pct) || pct < 0 || pct > 100) throw new Error("Comissão deve ser entre 0 e 100");
+    return {
+      nome: f.nome.trim(),
+      telefone: f.telefone.trim() || null,
+      porcentagem_comissao: pct,
+      ativo: f.ativo,
+      user_id: userId,
+    };
+  };
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const body = payload(form);
+      if (editingId) {
+        const { error } = await supabase.from("barbeiros").update(body).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("barbeiros").insert(body);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success(editingId ? "Barbeiro atualizado" : "Barbeiro cadastrado");
+      setForm(emptyBarbeiro());
+      setEditingId(null);
+      invalidate();
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const toggleActive = useMutation({
+    mutationFn: async (b: { id: string; ativo: boolean }) => {
+      const { error } = await supabase.from("barbeiros").update({ ativo: !b.ativo }).eq("id", b.id);
+      if (error) throw error;
+    },
+    onSuccess: () => invalidate(),
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("barbeiros").delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => { toast.success("Barbeiro removido"); invalidate(); },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="font-display text-xl font-medium flex items-center gap-2">
+          <Scissors className="h-4 w-4 text-gold" /> Gerenciar Barbeiros
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <form
+          onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
+          className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end mb-6"
+        >
+          <div className="md:col-span-4">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Nome do barbeiro</Label>
+            <Input placeholder="Ex: João" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} />
+          </div>
+          <div className="md:col-span-3">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Telefone</Label>
+            <Input placeholder="(00) 00000-0000" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
+          </div>
+          <div className="md:col-span-3">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Comissão (%)</Label>
+            <Input inputMode="decimal" value={form.porcentagem_comissao} onChange={(e) => setForm({ ...form, porcentagem_comissao: e.target.value })} />
+          </div>
+          <div className="md:col-span-2 flex gap-2">
+            <Button type="submit" disabled={save.isPending} className="flex-1 bg-gold text-primary-foreground hover:bg-gold/90">
+              {editingId ? <Pencil className="h-4 w-4" /> : <Plus className="h-4 w-4" />}
+              {editingId ? "Salvar" : "Adicionar"}
+            </Button>
+            {editingId && (
+              <Button type="button" variant="ghost" size="icon" onClick={() => { setEditingId(null); setForm(emptyBarbeiro()); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
+          </div>
+        </form>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Nome</TableHead>
+              <TableHead>Telefone</TableHead>
+              <TableHead className="text-right">Comissão</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead className="w-32"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {isLoading ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
+            ) : barbeiros.length === 0 ? (
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhum barbeiro cadastrado.</TableCell></TableRow>
+            ) : barbeiros.map((b) => (
+              <TableRow key={b.id}>
+                <TableCell className="font-medium">{b.nome}</TableCell>
+                <TableCell className="text-muted-foreground">{b.telefone ?? "—"}</TableCell>
+                <TableCell className="text-right tabular-nums text-gold">{Number(b.porcentagem_comissao)}%</TableCell>
+                <TableCell>
+                  <button
+                    type="button"
+                    onClick={() => toggleActive.mutate({ id: b.id, ativo: b.ativo })}
+                    className={`text-xs px-2 py-1 rounded border ${b.ativo
+                      ? "border-emerald-600/40 text-emerald-500 bg-emerald-600/10"
+                      : "border-border text-muted-foreground bg-muted/30"}`}
+                  >
+                    {b.ativo ? "Ativo" : "Inativo"}
+                  </button>
+                </TableCell>
+                <TableCell>
+                  <div className="flex justify-end gap-1">
+                    <Button size="icon" variant="ghost" onClick={() => {
+                      setEditingId(b.id);
+                      setForm({
+                        nome: b.nome,
+                        telefone: b.telefone ?? "",
+                        porcentagem_comissao: String(Number(b.porcentagem_comissao)),
+                        ativo: b.ativo,
+                      });
+                    }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => remove.mutate(b.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
