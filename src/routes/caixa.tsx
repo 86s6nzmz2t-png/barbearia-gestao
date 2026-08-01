@@ -92,6 +92,7 @@ function emptyForm(): FormState {
     payment_method: "dinheiro",
     fee_percent: "0",
     client_id: "none",
+    barbeiro_id: "",
     date: format(new Date(), "yyyy-MM-dd"),
   };
 }
