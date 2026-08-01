@@ -149,7 +149,7 @@ function CaixaPage() {
     queryFn: async () => {
       let query = supabase
         .from("transactions")
-        .select("*, client:clients(name)")
+        .select("*, client:clients(name), barbeiro:barbeiros(nome)")
         .order("created_at", { ascending: false });
       if (viewingHistory) {
         query = query.eq("date", historyDate);
