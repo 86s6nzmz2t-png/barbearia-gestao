@@ -58,9 +58,11 @@ type TxRow = {
   services: ServiceLine[] | null;
   payment_method: string;
   client_id: string | null;
+  barbeiro_id: string | null;
   date: string;
   cash_session_id: string | null;
   client: { name: string } | null;
+  barbeiro: { nome: string } | null;
 };
 
 type MovementRow = {
