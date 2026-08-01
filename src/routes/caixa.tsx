@@ -436,6 +436,18 @@ function CaixaPage() {
                 </Button>
               </div>
             </Field>
+            <Field className={showFee ? "md:col-span-3" : "md:col-span-3"} label="Barbeiro responsável">
+              <Select value={form.barbeiro_id} onValueChange={(v) => setForm({ ...form, barbeiro_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {barbeiros.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhum barbeiro ativo</SelectItem>
+                  ) : barbeiros.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.nome} — {Number(b.porcentagem_comissao)}%</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
             <div className="md:col-span-12 flex items-center justify-between pt-1">
               <p className="text-xs text-muted-foreground">
                 {showFee
