@@ -151,7 +151,55 @@ function Dashboard() {
     });
   }, [transactions, period]);
 
+  const { data: barbeiros = [] } = useBarbeiros();
+
+  const commissions = useMemo(() => {
+    const now = new Date();
+    let from: Date;
+    let to: Date;
+    if (period === "diario") {
+      from = startOfDay(now);
+      to = endOfDay(now);
+    } else if (period === "semanal") {
+      from = startOfWeek(now, { weekStartsOn: 1 });
+      to = endOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      from = startOfMonth(now);
+      to = endOfMonth(now);
+    }
+    const fromStr = format(from, "yyyy-MM-dd");
+    const toStr = format(to, "yyyy-MM-dd");
+    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
+
+    const rows = barbeiros.map((b) => {
+      const mine = filtered.filter((t) => t.barbeiro_id === b.id);
+      const gross = mine.reduce((s, t) => s + Number(t.amount), 0);
+      const pct = Number(b.porcentagem_comissao) || 0;
+      const commission = Math.round(gross * (pct / 100) * 100) / 100;
+      return {
+        id: b.id,
+        nome: b.nome,
+        pct,
+        gross,
+        commission,
+        shop: Math.round((gross - commission) * 100) / 100,
+        count: mine.length,
+      };
+    }).filter((r) => r.gross > 0 || r.count > 0);
+
+    const unassigned = filtered.filter((t) => !t.barbeiro_id);
+    const unassignedGross = unassigned.reduce((s, t) => s + Number(t.amount), 0);
+
+    return {
+      rows: rows.sort((a, b) => b.gross - a.gross),
+      unassignedGross,
+      unassignedCount: unassigned.length,
+      totalCommission: rows.reduce((s, r) => s + r.commission, 0),
+    };
+  }, [transactions, barbeiros, period]);
+
   const recent = transactions.slice(0, 5);
+
 
   return (
     <div className="max-w-7xl mx-auto px-5 md:px-10 py-8 md:py-12">
