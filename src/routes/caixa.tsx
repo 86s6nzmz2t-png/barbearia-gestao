@@ -34,7 +34,7 @@ import { ClientCombobox } from "@/components/client-combobox";
 import {
   PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
-import { useCardFees, useServices } from "@/lib/queries";
+import { useBarbeiros, useCardFees, useServices } from "@/lib/queries";
 import { useUserId } from "@/lib/auth";
 
 export const Route = createFileRoute("/caixa")({
@@ -58,9 +58,11 @@ type TxRow = {
   services: ServiceLine[] | null;
   payment_method: string;
   client_id: string | null;
+  barbeiro_id: string | null;
   date: string;
   cash_session_id: string | null;
   client: { name: string } | null;
+  barbeiro: { nome: string } | null;
 };
 
 type MovementRow = {
@@ -79,6 +81,7 @@ type FormState = {
   payment_method: string;
   fee_percent: string;
   client_id: string;
+  barbeiro_id: string;
   date: string;
 };
 
@@ -89,6 +92,7 @@ function emptyForm(): FormState {
     payment_method: "dinheiro",
     fee_percent: "0",
     client_id: "none",
+    barbeiro_id: "",
     date: format(new Date(), "yyyy-MM-dd"),
   };
 }
@@ -110,6 +114,7 @@ function formFromTx(tx: TxRow): FormState {
     payment_method: tx.payment_method,
     fee_percent: String(tx.fee_percent ?? 0),
     client_id: tx.client_id ?? "none",
+    barbeiro_id: tx.barbeiro_id ?? "",
     date: tx.date,
   };
 }
@@ -119,6 +124,7 @@ function CaixaPage() {
   const userId = useUserId();
   const cardFees = useCardFees();
   const { data: services = [] } = useServices();
+  const { data: barbeiros = [] } = useBarbeiros(true);
   const { isOpen: cashOpen, session } = useCashSessionGate();
   const today = format(new Date(), "yyyy-MM-dd");
 
@@ -147,7 +153,7 @@ function CaixaPage() {
     queryFn: async () => {
       let query = supabase
         .from("transactions")
-        .select("*, client:clients(name)")
+        .select("*, client:clients(name), barbeiro:barbeiros(nome)")
         .order("created_at", { ascending: false });
       if (viewingHistory) {
         query = query.eq("date", historyDate);
@@ -220,6 +226,7 @@ function CaixaPage() {
 
   const buildPayload = (f: FormState) => {
     if (!f.services.length) throw new Error("Adicione pelo menos um serviço.");
+    if (!f.barbeiro_id) throw new Error("Selecione o barbeiro responsável.");
     const amount = sumServices(f.services);
     if (!amount || amount <= 0) throw new Error("Valor total inválido.");
     const feePercent = effectiveFeePercent(f.payment_method, parseNum(f.fee_percent) || 0);
@@ -231,6 +238,7 @@ function CaixaPage() {
       services: f.services,
       payment_method: f.payment_method,
       client_id: f.client_id === "none" || f.client_id === "avulso" ? null : f.client_id,
+      barbeiro_id: f.barbeiro_id,
       date: f.date,
       cash_session_id: session?.id ?? null,
       user_id: userId,
@@ -428,6 +436,18 @@ function CaixaPage() {
                 </Button>
               </div>
             </Field>
+            <Field className={showFee ? "md:col-span-3" : "md:col-span-3"} label="Barbeiro responsável">
+              <Select value={form.barbeiro_id} onValueChange={(v) => setForm({ ...form, barbeiro_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {barbeiros.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhum barbeiro ativo</SelectItem>
+                  ) : barbeiros.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.nome} — {Number(b.porcentagem_comissao)}%</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
             <div className="md:col-span-12 flex items-center justify-between pt-1">
               <p className="text-xs text-muted-foreground">
                 {showFee
@@ -542,7 +562,12 @@ function CaixaPage() {
                       {format(new Date(item.data.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
                     </TableCell>
                     <TableCell>{item.data.service}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.data.client?.name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {item.data.client?.name ?? "—"}
+                      {item.data.barbeiro?.nome && (
+                        <span className="block text-xs text-gold/80">Barbeiro: {item.data.barbeiro.nome}</span>
+                      )}
+                    </TableCell>
                     <TableCell><span className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">{paymentLabel(item.data.payment_method)}</span></TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {Number(item.data.fee_percent) > 0 ? `${Number(item.data.fee_percent)}%` : "—"}
@@ -658,6 +683,9 @@ function CaixaPage() {
                         <div>
                           <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
                           <p className="text-foreground truncate">{item.data.client?.name ?? "—"}</p>
+                          {item.data.barbeiro?.nome && (
+                            <p className="text-xs text-gold/80 truncate">Barbeiro: {item.data.barbeiro.nome}</p>
+                          )}
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground uppercase tracking-wider">Líquido</p>
@@ -776,6 +804,16 @@ function CaixaPage() {
                 value={form.client_id}
                 onChange={(v) => setForm({ ...form, client_id: v })}
               />
+            </Field>
+            <Field className="col-span-2" label="Barbeiro responsável">
+              <Select value={form.barbeiro_id} onValueChange={(v) => setForm({ ...form, barbeiro_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {barbeiros.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.nome} — {Number(b.porcentagem_comissao)}%</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </Field>
           </div>
           <DialogFooter>

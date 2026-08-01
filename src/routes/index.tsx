@@ -4,13 +4,17 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone } from "lucide-react";
+import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone, Users } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Progress } from "@/components/ui/progress";
+import {
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+} from "@/components/ui/table";
 import { brl, paymentLabel } from "@/lib/finance";
+import { useBarbeiros } from "@/lib/queries";
 import { PageHeader } from "@/components/app-shell";
 
 type Period = "diario" | "semanal" | "mensal";
@@ -147,7 +151,55 @@ function Dashboard() {
     });
   }, [transactions, period]);
 
+  const { data: barbeiros = [] } = useBarbeiros();
+
+  const commissions = useMemo(() => {
+    const now = new Date();
+    let from: Date;
+    let to: Date;
+    if (period === "diario") {
+      from = startOfDay(now);
+      to = endOfDay(now);
+    } else if (period === "semanal") {
+      from = startOfWeek(now, { weekStartsOn: 1 });
+      to = endOfWeek(now, { weekStartsOn: 1 });
+    } else {
+      from = startOfMonth(now);
+      to = endOfMonth(now);
+    }
+    const fromStr = format(from, "yyyy-MM-dd");
+    const toStr = format(to, "yyyy-MM-dd");
+    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
+
+    const rows = barbeiros.map((b) => {
+      const mine = filtered.filter((t) => t.barbeiro_id === b.id);
+      const gross = mine.reduce((s, t) => s + Number(t.amount), 0);
+      const pct = Number(b.porcentagem_comissao) || 0;
+      const commission = Math.round(gross * (pct / 100) * 100) / 100;
+      return {
+        id: b.id,
+        nome: b.nome,
+        pct,
+        gross,
+        commission,
+        shop: Math.round((gross - commission) * 100) / 100,
+        count: mine.length,
+      };
+    }).filter((r) => r.gross > 0 || r.count > 0);
+
+    const unassigned = filtered.filter((t) => !t.barbeiro_id);
+    const unassignedGross = unassigned.reduce((s, t) => s + Number(t.amount), 0);
+
+    return {
+      rows: rows.sort((a, b) => b.gross - a.gross),
+      unassignedGross,
+      unassignedCount: unassigned.length,
+      totalCommission: rows.reduce((s, r) => s + r.commission, 0),
+    };
+  }, [transactions, barbeiros, period]);
+
   const recent = transactions.slice(0, 5);
+
 
   return (
     <div className="max-w-7xl mx-auto px-5 md:px-10 py-8 md:py-12">
@@ -254,6 +306,88 @@ function Dashboard() {
           )}
         </CardContent>
       </Card>
+
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle className="font-display text-xl font-medium flex items-center gap-2">
+            <Users className="h-4 w-4 text-gold" /> Resumo de Comissões por Barbeiro
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="hidden md:block overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Barbeiro</TableHead>
+                  <TableHead className="text-right">Atend.</TableHead>
+                  <TableHead className="text-right">Total faturado</TableHead>
+                  <TableHead className="text-right">% Comissão</TableHead>
+                  <TableHead className="text-right">Comissão (R$)</TableHead>
+                  <TableHead className="text-right">Líquido barbearia</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {commissions.rows.length === 0 ? (
+                  <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-8">
+                    Nenhum atendimento com barbeiro no período.
+                  </TableCell></TableRow>
+                ) : commissions.rows.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="font-medium">{r.nome}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{r.count}</TableCell>
+                    <TableCell className="text-right tabular-nums">{brl(r.gross)}</TableCell>
+                    <TableCell className="text-right tabular-nums text-muted-foreground">{r.pct}%</TableCell>
+                    <TableCell className="text-right tabular-nums text-gold">{brl(r.commission)}</TableCell>
+                    <TableCell className="text-right tabular-nums">{brl(r.shop)}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+
+          <div className="md:hidden space-y-3">
+            {commissions.rows.length === 0 ? (
+              <p className="text-center text-muted-foreground py-8">Nenhum atendimento com barbeiro no período.</p>
+            ) : commissions.rows.map((r) => (
+              <div key={r.id} className="rounded-xl border border-border bg-secondary/40 p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-display text-base font-semibold">{r.nome}</h3>
+                  <span className="text-xs text-muted-foreground">{r.count} atend. · {r.pct}%</span>
+                </div>
+                <div className="grid grid-cols-3 gap-2 text-sm">
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Faturado</p>
+                    <p className="tabular-nums font-medium">{brl(r.gross)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Comissão</p>
+                    <p className="tabular-nums font-medium text-gold">{brl(r.commission)}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground uppercase tracking-wider">Barbearia</p>
+                    <p className="tabular-nums font-medium">{brl(r.shop)}</p>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+
+          {(commissions.rows.length > 0 || commissions.unassignedCount > 0) && (
+            <div className="mt-4 pt-4 border-t border-border flex flex-wrap items-center justify-between gap-2 text-sm">
+              <span className="text-muted-foreground">
+                Total de comissões no período: <span className="text-gold font-medium tabular-nums">{brl(commissions.totalCommission)}</span>
+              </span>
+              {commissions.unassignedCount > 0 && (
+                <span className="text-xs text-muted-foreground">
+                  {commissions.unassignedCount} lançamento(s) sem barbeiro ({brl(commissions.unassignedGross)})
+                </span>
+              )}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+
 
       <Card className="mb-8">
         <CardHeader>

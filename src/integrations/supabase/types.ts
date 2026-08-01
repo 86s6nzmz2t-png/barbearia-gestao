@@ -14,6 +14,39 @@ export type Database = {
   }
   public: {
     Tables: {
+      barbeiros: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          id: string
+          nome: string
+          porcentagem_comissao: number
+          telefone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome: string
+          porcentagem_comissao?: number
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          id?: string
+          nome?: string
+          porcentagem_comissao?: number
+          telefone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       cash_movements: {
         Row: {
           amount: number
@@ -232,6 +265,7 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
+          barbeiro_id: string | null
           cash_session_id: string | null
           client_id: string | null
           created_at: string
@@ -246,6 +280,7 @@ export type Database = {
         }
         Insert: {
           amount: number
+          barbeiro_id?: string | null
           cash_session_id?: string | null
           client_id?: string | null
           created_at?: string
@@ -260,6 +295,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          barbeiro_id?: string | null
           cash_session_id?: string | null
           client_id?: string | null
           created_at?: string
@@ -273,6 +309,13 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_barbeiro_id_fkey"
+            columns: ["barbeiro_id"]
+            isOneToOne: false
+            referencedRelation: "barbeiros"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "transactions_cash_session_id_fkey"
             columns: ["cash_session_id"]
