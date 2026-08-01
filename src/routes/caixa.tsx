@@ -81,6 +81,7 @@ type FormState = {
   payment_method: string;
   fee_percent: string;
   client_id: string;
+  barbeiro_id: string;
   date: string;
 };
 
