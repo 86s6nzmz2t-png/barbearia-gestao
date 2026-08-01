@@ -124,6 +124,7 @@ function CaixaPage() {
   const userId = useUserId();
   const cardFees = useCardFees();
   const { data: services = [] } = useServices();
+  const { data: barbeiros = [] } = useBarbeiros(true);
   const { isOpen: cashOpen, session } = useCashSessionGate();
   const today = format(new Date(), "yyyy-MM-dd");
 
