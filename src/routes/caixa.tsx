@@ -797,6 +797,16 @@ function CaixaPage() {
                 onChange={(v) => setForm({ ...form, client_id: v })}
               />
             </Field>
+            <Field className="col-span-2" label="Barbeiro responsável">
+              <Select value={form.barbeiro_id} onValueChange={(v) => setForm({ ...form, barbeiro_id: v })}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {barbeiros.map((b) => (
+                    <SelectItem key={b.id} value={b.id}>{b.nome} — {Number(b.porcentagem_comissao)}%</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </Field>
           </div>
           <DialogFooter>
             <Button variant="ghost" onClick={() => setEditing(null)}>Cancelar</Button>
