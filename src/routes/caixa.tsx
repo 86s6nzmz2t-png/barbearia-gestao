@@ -225,6 +225,7 @@ function CaixaPage() {
 
   const buildPayload = (f: FormState) => {
     if (!f.services.length) throw new Error("Adicione pelo menos um serviço.");
+    if (!f.barbeiro_id) throw new Error("Selecione o barbeiro responsável.");
     const amount = sumServices(f.services);
     if (!amount || amount <= 0) throw new Error("Valor total inválido.");
     const feePercent = effectiveFeePercent(f.payment_method, parseNum(f.fee_percent) || 0);
@@ -236,6 +237,7 @@ function CaixaPage() {
       services: f.services,
       payment_method: f.payment_method,
       client_id: f.client_id === "none" || f.client_id === "avulso" ? null : f.client_id,
+      barbeiro_id: f.barbeiro_id,
       date: f.date,
       cash_session_id: session?.id ?? null,
       user_id: userId,
