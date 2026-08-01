@@ -683,6 +683,9 @@ function CaixaPage() {
                         <div>
                           <p className="text-xs text-muted-foreground uppercase tracking-wider">Cliente</p>
                           <p className="text-foreground truncate">{item.data.client?.name ?? "—"}</p>
+                          {item.data.barbeiro?.nome && (
+                            <p className="text-xs text-gold/80 truncate">Barbeiro: {item.data.barbeiro.nome}</p>
+                          )}
                         </div>
                         <div>
                           <p className="text-xs text-muted-foreground uppercase tracking-wider">Líquido</p>
