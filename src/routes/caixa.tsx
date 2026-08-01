@@ -34,7 +34,7 @@ import { ClientCombobox } from "@/components/client-combobox";
 import {
   PAYMENT_METHODS, brl, computeNet, defaultFeeFor, effectiveFeePercent, isCard, paymentLabel,
 } from "@/lib/finance";
-import { useCardFees, useServices } from "@/lib/queries";
+import { useBarbeiros, useCardFees, useServices } from "@/lib/queries";
 import { useUserId } from "@/lib/auth";
 
 export const Route = createFileRoute("/caixa")({
