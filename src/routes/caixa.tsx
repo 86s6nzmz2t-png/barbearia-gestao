@@ -114,6 +114,7 @@ function formFromTx(tx: TxRow): FormState {
     payment_method: tx.payment_method,
     fee_percent: String(tx.fee_percent ?? 0),
     client_id: tx.client_id ?? "none",
+    barbeiro_id: tx.barbeiro_id ?? "",
     date: tx.date,
   };
 }
