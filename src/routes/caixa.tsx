@@ -562,7 +562,12 @@ function CaixaPage() {
                       {format(new Date(item.data.date + "T00:00:00"), "dd/MM/yy", { locale: ptBR })}
                     </TableCell>
                     <TableCell>{item.data.service}</TableCell>
-                    <TableCell className="text-muted-foreground">{item.data.client?.name ?? "—"}</TableCell>
+                    <TableCell className="text-muted-foreground">
+                      {item.data.client?.name ?? "—"}
+                      {item.data.barbeiro?.nome && (
+                        <span className="block text-xs text-gold/80">Barbeiro: {item.data.barbeiro.nome}</span>
+                      )}
+                    </TableCell>
                     <TableCell><span className="text-xs px-2 py-1 rounded bg-secondary text-secondary-foreground">{paymentLabel(item.data.payment_method)}</span></TableCell>
                     <TableCell className="text-right tabular-nums text-muted-foreground">
                       {Number(item.data.fee_percent) > 0 ? `${Number(item.data.fee_percent)}%` : "—"}
