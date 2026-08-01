@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Percent, Plus, Receipt, Trash2 } from "lucide-react";
+import { Pencil, Percent, Plus, Receipt, Scissors, Trash2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
