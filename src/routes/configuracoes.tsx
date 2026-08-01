@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/app-shell";
 import { brl } from "@/lib/finance";
-import { useExpenses, useSetting } from "@/lib/queries";
+import { useBarbeiros, useExpenses, useSetting } from "@/lib/queries";
 import { useUserId } from "@/lib/auth";
 
 export const Route = createFileRoute("/configuracoes")({
