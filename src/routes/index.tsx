@@ -72,7 +72,7 @@ function Dashboard() {
   const monthRef = useMemo(() => monthFromKey(monthKey), [monthKey]);
 
   const range = useMemo(() => getRange(period, monthRef), [period, monthRef]);
-  const window = useMemo(() => getWindow(period, monthRef), [period, monthRef]);
+  const activeRange = useMemo(() => getWindow(period, monthRef), [period, monthRef]);
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions", "range", range.from.toISOString(), range.to.toISOString()],
@@ -91,23 +91,23 @@ function Dashboard() {
 
   const { data: monthlyExpenses = 0 } = useQuery({
     enabled: period === "mensal",
-    queryKey: ["expenses", "month", format(window.from, "yyyy-MM-dd"), format(window.to, "yyyy-MM-dd")],
+    queryKey: ["expenses", "month", format(activeRange.from, "yyyy-MM-dd"), format(activeRange.to, "yyyy-MM-dd")],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
         .select("amount, due_date")
-        .gte("due_date", format(window.from, "yyyy-MM-dd"))
-        .lte("due_date", format(window.to, "yyyy-MM-dd"));
+        .gte("due_date", format(activeRange.from, "yyyy-MM-dd"))
+        .lte("due_date", format(activeRange.to, "yyyy-MM-dd"));
       if (error) throw error;
       return (data ?? []).reduce((s, e) => s + Number(e.amount), 0);
     },
   });
 
   const windowTransactions = useMemo(() => {
-    const fromStr = format(window.from, "yyyy-MM-dd");
-    const toStr = format(window.to, "yyyy-MM-dd");
+    const fromStr = format(activeRange.from, "yyyy-MM-dd");
+    const toStr = format(activeRange.to, "yyyy-MM-dd");
     return transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
-  }, [transactions, window]);
+  }, [transactions, activeRange]);
 
   const { data: barbeiros = [] } = useBarbeiros();
 
