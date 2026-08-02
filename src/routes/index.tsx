@@ -67,7 +67,12 @@ function getRange(period: Period, monthRef: Date) {
 
 function Dashboard() {
   const [period, setPeriod] = useState<Period>("diario");
-  const range = useMemo(() => getRange(period), [period]);
+  const monthOptions = useMemo(() => buildMonthOptions(), []);
+  const [monthKey, setMonthKey] = useState(() => format(new Date(), "yyyy-MM"));
+  const monthRef = useMemo(() => monthFromKey(monthKey), [monthKey]);
+
+  const range = useMemo(() => getRange(period, monthRef), [period, monthRef]);
+  const window = useMemo(() => getWindow(period, monthRef), [period, monthRef]);
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions", "range", range.from.toISOString(), range.to.toISOString()],
@@ -86,118 +91,29 @@ function Dashboard() {
 
   const { data: monthlyExpenses = 0 } = useQuery({
     enabled: period === "mensal",
-    queryKey: ["expenses", "month", format(range.from, "yyyy-MM"), format(range.to, "yyyy-MM")],
+    queryKey: ["expenses", "month", format(window.from, "yyyy-MM-dd"), format(window.to, "yyyy-MM-dd")],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
         .select("amount, due_date")
-        .gte("due_date", format(range.from, "yyyy-MM-dd"))
-        .lte("due_date", format(range.to, "yyyy-MM-dd"));
+        .gte("due_date", format(window.from, "yyyy-MM-dd"))
+        .lte("due_date", format(window.to, "yyyy-MM-dd"));
       if (error) throw error;
       return (data ?? []).reduce((s, e) => s + Number(e.amount), 0);
     },
   });
 
-  const totals = useMemo(() => {
-    const now = new Date();
-    let from: Date;
-    let to: Date;
-    if (period === "diario") {
-      from = startOfDay(now);
-      to = endOfDay(now);
-    } else if (period === "semanal") {
-      from = startOfWeek(now, { weekStartsOn: 1 });
-      to = endOfWeek(now, { weekStartsOn: 1 });
-    } else {
-      from = startOfMonth(now);
-      to = endOfMonth(now);
-    }
-    const fromStr = format(from, "yyyy-MM-dd");
-    const toStr = format(to, "yyyy-MM-dd");
-    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
-    const gross = filtered.reduce((s, t) => s + Number(t.amount), 0);
-    const net = filtered.reduce((s, t) => s + Number(t.net_amount), 0);
-    return { gross, net, count: filtered.length, profit: net - monthlyExpenses };
-  }, [transactions, monthlyExpenses, period]);
-
-  const chartData = useMemo(() => {
-    const buckets =
-      range.step === "day"
-        ? eachDayOfInterval({ start: range.from, end: range.to })
-        : eachMonthOfInterval({ start: range.from, end: range.to });
-
-    return buckets.map((b) => {
-      const inBucket = transactions.filter((t) => {
-        const d = new Date(t.date + "T00:00:00");
-        if (range.step === "day") return format(d, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
-        return format(d, "yyyy-MM") === format(b, "yyyy-MM");
-      });
-      const sum = inBucket.reduce((s, t) => s + Number(t.amount), 0);
-      const label =
-        range.step === "day"
-          ? format(b, "dd/MM", { locale: ptBR })
-          : format(b, "MMM", { locale: ptBR });
-      return { label, valor: sum };
-    });
-  }, [transactions, range]);
-
-  const paymentBreakdown = useMemo(() => {
-    const now = new Date();
-    let from: Date;
-    let to: Date;
-    if (period === "diario") {
-      from = startOfDay(now);
-      to = endOfDay(now);
-    } else if (period === "semanal") {
-      from = startOfWeek(now, { weekStartsOn: 1 });
-      to = endOfWeek(now, { weekStartsOn: 1 });
-    } else {
-      from = startOfMonth(now);
-      to = endOfMonth(now);
-    }
-    const fromStr = format(from, "yyyy-MM-dd");
-    const toStr = format(to, "yyyy-MM-dd");
-    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
-
-    const methods = [
-      { key: "dinheiro", label: "Dinheiro", icon: <Banknote className="h-5 w-5" /> },
-      { key: "pix", label: "Pix", icon: <Smartphone className="h-5 w-5" /> },
-      { key: "cartao_credito", label: "Cartão de Crédito", icon: <CreditCard className="h-5 w-5" /> },
-      { key: "cartao_debito", label: "Cartão de Débito", icon: <CreditCard className="h-5 w-5" /> },
-    ] as const;
-
-    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
-
-    return methods.map((m) => {
-      const amount = filtered
-        .filter((t) => t.payment_method === m.key)
-        .reduce((s, t) => s + Number(t.amount), 0);
-      return { ...m, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0 };
-    });
-  }, [transactions, period]);
+  const windowTransactions = useMemo(() => {
+    const fromStr = format(window.from, "yyyy-MM-dd");
+    const toStr = format(window.to, "yyyy-MM-dd");
+    return transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
+  }, [transactions, window]);
 
   const { data: barbeiros = [] } = useBarbeiros();
 
   const commissions = useMemo(() => {
-    const now = new Date();
-    let from: Date;
-    let to: Date;
-    if (period === "diario") {
-      from = startOfDay(now);
-      to = endOfDay(now);
-    } else if (period === "semanal") {
-      from = startOfWeek(now, { weekStartsOn: 1 });
-      to = endOfWeek(now, { weekStartsOn: 1 });
-    } else {
-      from = startOfMonth(now);
-      to = endOfMonth(now);
-    }
-    const fromStr = format(from, "yyyy-MM-dd");
-    const toStr = format(to, "yyyy-MM-dd");
-    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
-
     const rows = barbeiros.map((b) => {
-      const mine = filtered.filter((t) => t.barbeiro_id === b.id);
+      const mine = windowTransactions.filter((t) => t.barbeiro_id === b.id);
       const gross = mine.reduce((s, t) => s + Number(t.amount), 0);
       const pct = Number(b.porcentagem_comissao) || 0;
       const commission = Math.round(gross * (pct / 100) * 100) / 100;
@@ -212,7 +128,7 @@ function Dashboard() {
       };
     }).filter((r) => r.gross > 0 || r.count > 0);
 
-    const unassigned = filtered.filter((t) => !t.barbeiro_id);
+    const unassigned = windowTransactions.filter((t) => !t.barbeiro_id);
     const unassignedGross = unassigned.reduce((s, t) => s + Number(t.amount), 0);
 
     return {
@@ -221,9 +137,40 @@ function Dashboard() {
       unassignedCount: unassigned.length,
       totalCommission: rows.reduce((s, r) => s + r.commission, 0),
     };
-  }, [transactions, barbeiros, period]);
+  }, [windowTransactions, barbeiros]);
 
-  const recent = transactions.slice(0, 5);
+  const totals = useMemo(() => {
+    const gross = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
+    const net = windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0);
+    return {
+      gross,
+      net,
+      count: windowTransactions.length,
+      shopNet: Math.round((gross - commissions.totalCommission) * 100) / 100,
+      profit: net - monthlyExpenses,
+    };
+  }, [windowTransactions, monthlyExpenses, commissions.totalCommission]);
+
+  const paymentBreakdown = useMemo(() => {
+    const methods = [
+      { key: "dinheiro", label: "Dinheiro", icon: <Banknote className="h-5 w-5" /> },
+      { key: "pix", label: "Pix", icon: <Smartphone className="h-5 w-5" /> },
+      { key: "cartao_credito", label: "Cartão de Crédito", icon: <CreditCard className="h-5 w-5" /> },
+      { key: "cartao_debito", label: "Cartão de Débito", icon: <CreditCard className="h-5 w-5" /> },
+    ] as const;
+
+    const total = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
+
+    return methods.map((m) => {
+      const amount = windowTransactions
+        .filter((t) => t.payment_method === m.key)
+        .reduce((s, t) => s + Number(t.amount), 0);
+      return { ...m, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0 };
+    });
+  }, [windowTransactions]);
+
+  const recent = (period === "mensal" ? windowTransactions : transactions).slice(0, 5);
+
 
 
   return (
