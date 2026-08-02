@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays } from "date-fns";
+import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone, Users } from "lucide-react";
@@ -9,6 +9,7 @@ import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCa
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -29,7 +30,30 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-function getRange(period: Period) {
+/** Meses disponíveis para consulta histórica (36 meses até o mês corrente). */
+function buildMonthOptions() {
+  const now = startOfMonth(new Date());
+  return Array.from({ length: 36 }, (_, i) => {
+    const d = subMonths(now, i);
+    return { value: format(d, "yyyy-MM"), label: format(d, "MMMM 'de' yyyy", { locale: ptBR }) };
+  });
+}
+
+function monthFromKey(key: string) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, 1);
+}
+
+/** Janela usada pelos cards/relatórios (período efetivo consultado). */
+function getWindow(period: Period, monthRef: Date) {
+  const now = new Date();
+  if (period === "diario") return { from: startOfDay(now), to: endOfDay(now) };
+  if (period === "semanal") return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+  return { from: startOfMonth(monthRef), to: endOfMonth(monthRef) };
+}
+
+/** Intervalo carregado do banco (inclui histórico para o gráfico de evolução). */
+function getRange(period: Period, monthRef: Date) {
   const now = new Date();
   if (period === "diario") {
     return { from: startOfDay(subDays(now, 13)), to: endOfDay(now), step: "day" as const };
@@ -37,12 +61,18 @@ function getRange(period: Period) {
   if (period === "semanal") {
     return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "day" as const };
   }
-  return { from: startOfMonth(subDays(now, 30 * 5)), to: endOfMonth(now), step: "month" as const };
+  return { from: startOfMonth(subMonths(monthRef, 5)), to: endOfMonth(monthRef), step: "month" as const };
 }
+
 
 function Dashboard() {
   const [period, setPeriod] = useState<Period>("diario");
-  const range = useMemo(() => getRange(period), [period]);
+  const monthOptions = useMemo(() => buildMonthOptions(), []);
+  const [monthKey, setMonthKey] = useState(() => format(new Date(), "yyyy-MM"));
+  const monthRef = useMemo(() => monthFromKey(monthKey), [monthKey]);
+
+  const range = useMemo(() => getRange(period, monthRef), [period, monthRef]);
+  const activeRange = useMemo(() => getWindow(period, monthRef), [period, monthRef]);
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions", "range", range.from.toISOString(), range.to.toISOString()],
@@ -61,39 +91,83 @@ function Dashboard() {
 
   const { data: monthlyExpenses = 0 } = useQuery({
     enabled: period === "mensal",
-    queryKey: ["expenses", "month", format(range.from, "yyyy-MM"), format(range.to, "yyyy-MM")],
+    queryKey: ["expenses", "month", format(activeRange.from, "yyyy-MM-dd"), format(activeRange.to, "yyyy-MM-dd")],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
         .select("amount, due_date")
-        .gte("due_date", format(range.from, "yyyy-MM-dd"))
-        .lte("due_date", format(range.to, "yyyy-MM-dd"));
+        .gte("due_date", format(activeRange.from, "yyyy-MM-dd"))
+        .lte("due_date", format(activeRange.to, "yyyy-MM-dd"));
       if (error) throw error;
       return (data ?? []).reduce((s, e) => s + Number(e.amount), 0);
     },
   });
 
+  const windowTransactions = useMemo(() => {
+    const fromStr = format(activeRange.from, "yyyy-MM-dd");
+    const toStr = format(activeRange.to, "yyyy-MM-dd");
+    return transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
+  }, [transactions, activeRange]);
+
+  const { data: barbeiros = [] } = useBarbeiros();
+
+  const commissions = useMemo(() => {
+    const rows = barbeiros.map((b) => {
+      const mine = windowTransactions.filter((t) => t.barbeiro_id === b.id);
+      const gross = mine.reduce((s, t) => s + Number(t.amount), 0);
+      const pct = Number(b.porcentagem_comissao) || 0;
+      const commission = Math.round(gross * (pct / 100) * 100) / 100;
+      return {
+        id: b.id,
+        nome: b.nome,
+        pct,
+        gross,
+        commission,
+        shop: Math.round((gross - commission) * 100) / 100,
+        count: mine.length,
+      };
+    }).filter((r) => r.gross > 0 || r.count > 0);
+
+    const unassigned = windowTransactions.filter((t) => !t.barbeiro_id);
+    const unassignedGross = unassigned.reduce((s, t) => s + Number(t.amount), 0);
+
+    return {
+      rows: rows.sort((a, b) => b.gross - a.gross),
+      unassignedGross,
+      unassignedCount: unassigned.length,
+      totalCommission: rows.reduce((s, r) => s + r.commission, 0),
+    };
+  }, [windowTransactions, barbeiros]);
+
   const totals = useMemo(() => {
-    const now = new Date();
-    let from: Date;
-    let to: Date;
-    if (period === "diario") {
-      from = startOfDay(now);
-      to = endOfDay(now);
-    } else if (period === "semanal") {
-      from = startOfWeek(now, { weekStartsOn: 1 });
-      to = endOfWeek(now, { weekStartsOn: 1 });
-    } else {
-      from = startOfMonth(now);
-      to = endOfMonth(now);
-    }
-    const fromStr = format(from, "yyyy-MM-dd");
-    const toStr = format(to, "yyyy-MM-dd");
-    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
-    const gross = filtered.reduce((s, t) => s + Number(t.amount), 0);
-    const net = filtered.reduce((s, t) => s + Number(t.net_amount), 0);
-    return { gross, net, count: filtered.length, profit: net - monthlyExpenses };
-  }, [transactions, monthlyExpenses, period]);
+    const gross = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
+    const net = windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0);
+    return {
+      gross,
+      net,
+      count: windowTransactions.length,
+      shopNet: Math.round((gross - commissions.totalCommission) * 100) / 100,
+      profit: net - monthlyExpenses,
+    };
+  }, [windowTransactions, monthlyExpenses, commissions.totalCommission]);
+
+  const paymentBreakdown = useMemo(() => {
+    const methods = [
+      { key: "dinheiro", label: "Dinheiro", icon: <Banknote className="h-5 w-5" /> },
+      { key: "pix", label: "Pix", icon: <Smartphone className="h-5 w-5" /> },
+      { key: "cartao_credito", label: "Cartão de Crédito", icon: <CreditCard className="h-5 w-5" /> },
+      { key: "cartao_debito", label: "Cartão de Débito", icon: <CreditCard className="h-5 w-5" /> },
+    ] as const;
+
+    const total = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
+
+    return methods.map((m) => {
+      const amount = windowTransactions
+        .filter((t) => t.payment_method === m.key)
+        .reduce((s, t) => s + Number(t.amount), 0);
+      return { ...m, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0 };
+    });
+  }, [windowTransactions]);
 
   const chartData = useMemo(() => {
     const buckets =
@@ -111,95 +185,12 @@ function Dashboard() {
       const label =
         range.step === "day"
           ? format(b, "dd/MM", { locale: ptBR })
-          : format(b, "MMM", { locale: ptBR });
+          : format(b, "MMM/yy", { locale: ptBR });
       return { label, valor: sum };
     });
   }, [transactions, range]);
 
-  const paymentBreakdown = useMemo(() => {
-    const now = new Date();
-    let from: Date;
-    let to: Date;
-    if (period === "diario") {
-      from = startOfDay(now);
-      to = endOfDay(now);
-    } else if (period === "semanal") {
-      from = startOfWeek(now, { weekStartsOn: 1 });
-      to = endOfWeek(now, { weekStartsOn: 1 });
-    } else {
-      from = startOfMonth(now);
-      to = endOfMonth(now);
-    }
-    const fromStr = format(from, "yyyy-MM-dd");
-    const toStr = format(to, "yyyy-MM-dd");
-    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
-
-    const methods = [
-      { key: "dinheiro", label: "Dinheiro", icon: <Banknote className="h-5 w-5" /> },
-      { key: "pix", label: "Pix", icon: <Smartphone className="h-5 w-5" /> },
-      { key: "cartao_credito", label: "Cartão de Crédito", icon: <CreditCard className="h-5 w-5" /> },
-      { key: "cartao_debito", label: "Cartão de Débito", icon: <CreditCard className="h-5 w-5" /> },
-    ] as const;
-
-    const total = filtered.reduce((s, t) => s + Number(t.amount), 0);
-
-    return methods.map((m) => {
-      const amount = filtered
-        .filter((t) => t.payment_method === m.key)
-        .reduce((s, t) => s + Number(t.amount), 0);
-      return { ...m, amount, percent: total > 0 ? Math.round((amount / total) * 100) : 0 };
-    });
-  }, [transactions, period]);
-
-  const { data: barbeiros = [] } = useBarbeiros();
-
-  const commissions = useMemo(() => {
-    const now = new Date();
-    let from: Date;
-    let to: Date;
-    if (period === "diario") {
-      from = startOfDay(now);
-      to = endOfDay(now);
-    } else if (period === "semanal") {
-      from = startOfWeek(now, { weekStartsOn: 1 });
-      to = endOfWeek(now, { weekStartsOn: 1 });
-    } else {
-      from = startOfMonth(now);
-      to = endOfMonth(now);
-    }
-    const fromStr = format(from, "yyyy-MM-dd");
-    const toStr = format(to, "yyyy-MM-dd");
-    const filtered = transactions.filter((t) => t.date >= fromStr && t.date <= toStr);
-
-    const rows = barbeiros.map((b) => {
-      const mine = filtered.filter((t) => t.barbeiro_id === b.id);
-      const gross = mine.reduce((s, t) => s + Number(t.amount), 0);
-      const pct = Number(b.porcentagem_comissao) || 0;
-      const commission = Math.round(gross * (pct / 100) * 100) / 100;
-      return {
-        id: b.id,
-        nome: b.nome,
-        pct,
-        gross,
-        commission,
-        shop: Math.round((gross - commission) * 100) / 100,
-        count: mine.length,
-      };
-    }).filter((r) => r.gross > 0 || r.count > 0);
-
-    const unassigned = filtered.filter((t) => !t.barbeiro_id);
-    const unassignedGross = unassigned.reduce((s, t) => s + Number(t.amount), 0);
-
-    return {
-      rows: rows.sort((a, b) => b.gross - a.gross),
-      unassignedGross,
-      unassignedCount: unassigned.length,
-      totalCommission: rows.reduce((s, r) => s + r.commission, 0),
-    };
-  }, [transactions, barbeiros, period]);
-
-  const recent = transactions.slice(0, 5);
-
+  const recent = (period === "mensal" ? windowTransactions : transactions).slice(0, 5);
 
   return (
     <div className="max-w-7xl mx-auto px-5 md:px-10 py-8 md:py-12">
@@ -207,15 +198,32 @@ function Dashboard() {
         title="Dashboard"
         subtitle="Acompanhe o faturamento e os atendimentos da sua barbearia."
         action={
-          <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
-            <TabsList className="bg-card border border-border">
-              <TabsTrigger value="diario">Diário</TabsTrigger>
-              <TabsTrigger value="semanal">Semanal</TabsTrigger>
-              <TabsTrigger value="mensal">Mensal</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <TabsList className="bg-card border border-border">
+                <TabsTrigger value="diario">Diário</TabsTrigger>
+                <TabsTrigger value="semanal">Semanal</TabsTrigger>
+                <TabsTrigger value="mensal">Mensal</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {period === "mensal" && (
+              <Select value={monthKey} onValueChange={setMonthKey}>
+                <SelectTrigger className="w-[190px] bg-card border-border capitalize">
+                  <SelectValue placeholder="Selecione o mês" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {monthOptions.map((m) => (
+                    <SelectItem key={m.value} value={m.value} className="capitalize">
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         }
       />
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <StatCard
@@ -240,22 +248,39 @@ function Dashboard() {
       </div>
 
       {period === "mensal" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <StatCard
-            icon={<TrendingDown className="h-4 w-4" />}
-            label="Despesas Fixas do Mês"
-            value={brl(monthlyExpenses)}
-            loading={isLoading}
-          />
-          <StatCard
-            icon={<Wallet className="h-4 w-4" />}
-            label="Lucro Real Final do Mês"
-            value={brl(totals.profit)}
-            hint="Líquido − despesas fixas do período"
-            loading={isLoading}
-          />
-        </div>
+        <>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+            Mês consultado:{" "}
+            <span className="text-foreground capitalize">
+              {format(activeRange.from, "MMMM 'de' yyyy", { locale: ptBR })}
+            </span>{" "}
+            ({format(activeRange.from, "dd/MM")} – {format(activeRange.to, "dd/MM/yyyy")})
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <StatCard
+              icon={<Users className="h-4 w-4" />}
+              label="Faturamento Líquido (Barbearia)"
+              value={brl(totals.shopNet)}
+              hint={`${brl(commissions.totalCommission)} em comissões`}
+              loading={isLoading}
+            />
+            <StatCard
+              icon={<TrendingDown className="h-4 w-4" />}
+              label="Despesas Fixas do Mês"
+              value={brl(monthlyExpenses)}
+              loading={isLoading}
+            />
+            <StatCard
+              icon={<Wallet className="h-4 w-4" />}
+              label="Lucro Real Final do Mês"
+              value={brl(totals.profit)}
+              hint="Líquido − despesas fixas do período"
+              loading={isLoading}
+            />
+          </div>
+        </>
       )}
+
 
       <Card className="mb-8">
         <CardHeader>
