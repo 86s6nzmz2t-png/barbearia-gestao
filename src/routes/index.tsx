@@ -248,22 +248,39 @@ function Dashboard() {
       </div>
 
       {period === "mensal" && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
-          <StatCard
-            icon={<TrendingDown className="h-4 w-4" />}
-            label="Despesas Fixas do Mês"
-            value={brl(monthlyExpenses)}
-            loading={isLoading}
-          />
-          <StatCard
-            icon={<Wallet className="h-4 w-4" />}
-            label="Lucro Real Final do Mês"
-            value={brl(totals.profit)}
-            hint="Líquido − despesas fixas do período"
-            loading={isLoading}
-          />
-        </div>
+        <>
+          <p className="text-xs uppercase tracking-wider text-muted-foreground mb-3">
+            Mês consultado:{" "}
+            <span className="text-foreground capitalize">
+              {format(activeRange.from, "MMMM 'de' yyyy", { locale: ptBR })}
+            </span>{" "}
+            ({format(activeRange.from, "dd/MM")} – {format(activeRange.to, "dd/MM/yyyy")})
+          </p>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <StatCard
+              icon={<Users className="h-4 w-4" />}
+              label="Faturamento Líquido (Barbearia)"
+              value={brl(totals.shopNet)}
+              hint={`${brl(commissions.totalCommission)} em comissões`}
+              loading={isLoading}
+            />
+            <StatCard
+              icon={<TrendingDown className="h-4 w-4" />}
+              label="Despesas Fixas do Mês"
+              value={brl(monthlyExpenses)}
+              loading={isLoading}
+            />
+            <StatCard
+              icon={<Wallet className="h-4 w-4" />}
+              label="Lucro Real Final do Mês"
+              value={brl(totals.profit)}
+              hint="Líquido − despesas fixas do período"
+              loading={isLoading}
+            />
+          </div>
+        </>
       )}
+
 
       <Card className="mb-8">
         <CardHeader>
