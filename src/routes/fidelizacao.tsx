@@ -190,16 +190,22 @@ function SearchClientPanel({
   onClear: () => void;
 }) {
   const q = search.trim().toLowerCase();
+  const qDigits = q.replace(/\D/g, "");
   const results = q
     ? clients
-        .filter(
-          (c) =>
+        .filter((c) => {
+          const phones = `${c.phone ?? ""} ${c.whatsapp ?? ""}`.toLowerCase();
+          const phoneDigits = phones.replace(/\D/g, "");
+          return (
             c.name.toLowerCase().includes(q) ||
-            (c.phone ?? "").toLowerCase().includes(q) ||
-            (c.whatsapp ?? "").toLowerCase().includes(q),
-        )
+            (c.notes ?? "").toLowerCase().includes(q) ||
+            phones.includes(q) ||
+            (qDigits.length > 0 && phoneDigits.includes(qDigits))
+          );
+        })
         .slice(0, 8)
     : [];
+
 
   return (
     <Card className="mb-6 border-gold/30">
