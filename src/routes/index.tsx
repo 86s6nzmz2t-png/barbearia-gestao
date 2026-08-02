@@ -169,9 +169,28 @@ function Dashboard() {
     });
   }, [windowTransactions]);
 
+  const chartData = useMemo(() => {
+    const buckets =
+      range.step === "day"
+        ? eachDayOfInterval({ start: range.from, end: range.to })
+        : eachMonthOfInterval({ start: range.from, end: range.to });
+
+    return buckets.map((b) => {
+      const inBucket = transactions.filter((t) => {
+        const d = new Date(t.date + "T00:00:00");
+        if (range.step === "day") return format(d, "yyyy-MM-dd") === format(b, "yyyy-MM-dd");
+        return format(d, "yyyy-MM") === format(b, "yyyy-MM");
+      });
+      const sum = inBucket.reduce((s, t) => s + Number(t.amount), 0);
+      const label =
+        range.step === "day"
+          ? format(b, "dd/MM", { locale: ptBR })
+          : format(b, "MMM/yy", { locale: ptBR });
+      return { label, valor: sum };
+    });
+  }, [transactions, range]);
+
   const recent = (period === "mensal" ? windowTransactions : transactions).slice(0, 5);
-
-
 
   return (
     <div className="max-w-7xl mx-auto px-5 md:px-10 py-8 md:py-12">
@@ -179,15 +198,32 @@ function Dashboard() {
         title="Dashboard"
         subtitle="Acompanhe o faturamento e os atendimentos da sua barbearia."
         action={
-          <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
-            <TabsList className="bg-card border border-border">
-              <TabsTrigger value="diario">Diário</TabsTrigger>
-              <TabsTrigger value="semanal">Semanal</TabsTrigger>
-              <TabsTrigger value="mensal">Mensal</TabsTrigger>
-            </TabsList>
-          </Tabs>
+          <div className="flex flex-wrap items-center gap-3">
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <TabsList className="bg-card border border-border">
+                <TabsTrigger value="diario">Diário</TabsTrigger>
+                <TabsTrigger value="semanal">Semanal</TabsTrigger>
+                <TabsTrigger value="mensal">Mensal</TabsTrigger>
+              </TabsList>
+            </Tabs>
+            {period === "mensal" && (
+              <Select value={monthKey} onValueChange={setMonthKey}>
+                <SelectTrigger className="w-[190px] bg-card border-border capitalize">
+                  <SelectValue placeholder="Selecione o mês" />
+                </SelectTrigger>
+                <SelectContent className="max-h-72">
+                  {monthOptions.map((m) => (
+                    <SelectItem key={m.value} value={m.value} className="capitalize">
+                      {m.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
         }
       />
+
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
         <StatCard
