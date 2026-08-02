@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachWeekOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays } from "date-fns";
+import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone, Users } from "lucide-react";
@@ -9,6 +9,7 @@ import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCa
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -29,7 +30,30 @@ export const Route = createFileRoute("/")({
   component: Dashboard,
 });
 
-function getRange(period: Period) {
+/** Meses disponíveis para consulta histórica (36 meses até o mês corrente). */
+function buildMonthOptions() {
+  const now = startOfMonth(new Date());
+  return Array.from({ length: 36 }, (_, i) => {
+    const d = subMonths(now, i);
+    return { value: format(d, "yyyy-MM"), label: format(d, "MMMM 'de' yyyy", { locale: ptBR }) };
+  });
+}
+
+function monthFromKey(key: string) {
+  const [y, m] = key.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, 1);
+}
+
+/** Janela usada pelos cards/relatórios (período efetivo consultado). */
+function getWindow(period: Period, monthRef: Date) {
+  const now = new Date();
+  if (period === "diario") return { from: startOfDay(now), to: endOfDay(now) };
+  if (period === "semanal") return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
+  return { from: startOfMonth(monthRef), to: endOfMonth(monthRef) };
+}
+
+/** Intervalo carregado do banco (inclui histórico para o gráfico de evolução). */
+function getRange(period: Period, monthRef: Date) {
   const now = new Date();
   if (period === "diario") {
     return { from: startOfDay(subDays(now, 13)), to: endOfDay(now), step: "day" as const };
@@ -37,8 +61,9 @@ function getRange(period: Period) {
   if (period === "semanal") {
     return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "day" as const };
   }
-  return { from: startOfMonth(subDays(now, 30 * 5)), to: endOfMonth(now), step: "month" as const };
+  return { from: startOfMonth(subMonths(monthRef, 5)), to: endOfMonth(monthRef), step: "month" as const };
 }
+
 
 function Dashboard() {
   const [period, setPeriod] = useState<Period>("diario");
