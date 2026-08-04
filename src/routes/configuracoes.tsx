@@ -36,9 +36,11 @@ function SettingsPage() {
       <CardFeesSetting />
       <BarbeirosSection />
       <ExpensesSection />
+      <UserAccessSection />
     </div>
   );
 }
+
 
 function CardFeesSetting() {
   const qc = useQueryClient();
