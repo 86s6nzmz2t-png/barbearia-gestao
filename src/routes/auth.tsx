@@ -43,7 +43,7 @@ function AuthPage() {
           options: { emailRedirectTo: window.location.origin },
         });
         if (error) throw error;
-        toast.success("Conta criada! Entrando...");
+        toast.success("Conta criada! Aguarde a aprovação de um administrador para acessar.");
       } else {
         const { error } = await supabase.auth.signInWithPassword({ email, password });
         if (error) throw error;
