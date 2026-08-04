@@ -18,6 +18,8 @@ import { PageHeader } from "@/components/app-shell";
 import { brl } from "@/lib/finance";
 import { useBarbeiros, useExpenses, useSetting } from "@/lib/queries";
 import { useUserId } from "@/lib/auth";
+import { UserAccessSection } from "@/components/user-access-section";
+
 
 export const Route = createFileRoute("/configuracoes")({
   head: () => ({
