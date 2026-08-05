@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -15,6 +15,7 @@ type AuthState = {
   session: Session | null;
   profile: Profile | null;
   loading: boolean;
+  profileError: string | null;
   refreshProfile: () => Promise<void>;
 };
 
@@ -23,6 +24,7 @@ const AuthContext = createContext<AuthState>({
   session: null,
   profile: null,
   loading: true,
+  profileError: null,
   refreshProfile: async () => {},
 });
 
@@ -31,19 +33,28 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [loading, setLoading] = useState(true);
+  const [profileError, setProfileError] = useState<string | null>(null);
 
-  const loadProfile = async (uid: string | undefined) => {
+  const loadProfile = useCallback(async (uid: string | undefined) => {
     if (!uid) {
       setProfile(null);
+      setProfileError(null);
       return;
     }
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("profiles")
       .select("id, email, full_name, role, status")
       .eq("id", uid)
       .maybeSingle();
+
+    if (error) {
+      setProfileError(error.message);
+      return;
+    }
+
     setProfile((data as Profile | null) ?? null);
-  };
+    setProfileError(data ? null : "Perfil de acesso não encontrado.");
+  }, []);
 
   useEffect(() => {
     const { data: sub } = supabase.auth.onAuthStateChange((_event, s) => {
@@ -61,14 +72,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setLoading(false);
     });
     return () => sub.subscription.unsubscribe();
-  }, []);
+  }, [loadProfile]);
+
+  useEffect(() => {
+    const refreshOnReturn = () => {
+      if (document.visibilityState === "visible" && user?.id) {
+        void loadProfile(user.id);
+      }
+    };
+    document.addEventListener("visibilitychange", refreshOnReturn);
+    window.addEventListener("focus", refreshOnReturn);
+    return () => {
+      document.removeEventListener("visibilitychange", refreshOnReturn);
+      window.removeEventListener("focus", refreshOnReturn);
+    };
+  }, [loadProfile, user?.id]);
 
   const refreshProfile = async () => {
     await loadProfile(user?.id);
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, profile, loading, refreshProfile }}>
+    <AuthContext.Provider
+      value={{ user, session, profile, loading, profileError, refreshProfile }}
+    >
       {children}
     </AuthContext.Provider>
   );

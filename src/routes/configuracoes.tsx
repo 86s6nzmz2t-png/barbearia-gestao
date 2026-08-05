@@ -17,7 +17,7 @@ import {
 import { PageHeader } from "@/components/app-shell";
 import { brl } from "@/lib/finance";
 import { useBarbeiros, useExpenses, useSetting } from "@/lib/queries";
-import { useUserId } from "@/lib/auth";
+import { useAuth, useIsAdmin, useUserId } from "@/lib/auth";
 import { UserAccessSection } from "@/components/user-access-section";
 
 
@@ -32,13 +32,35 @@ export const Route = createFileRoute("/configuracoes")({
 });
 
 function SettingsPage() {
+  const { loading, profileError, refreshProfile } = useAuth();
+  const isAdmin = useIsAdmin();
+
   return (
     <div className="max-w-5xl mx-auto px-5 md:px-10 py-8 md:py-12 space-y-6">
       <PageHeader title="Configurações" subtitle="Defina taxas padrão e gerencie despesas fixas." />
+      {loading ? (
+        <Card>
+          <CardContent className="py-6 text-sm text-muted-foreground">
+            Verificando permissões de acesso...
+          </CardContent>
+        </Card>
+      ) : profileError ? (
+        <Card>
+          <CardContent className="flex flex-col gap-3 py-6 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-sm text-muted-foreground">
+              Não foi possível carregar suas permissões de acesso.
+            </p>
+            <Button variant="outline" onClick={() => void refreshProfile()}>
+              Tentar novamente
+            </Button>
+          </CardContent>
+        </Card>
+      ) : isAdmin ? (
+        <UserAccessSection />
+      ) : null}
       <CardFeesSetting />
       <BarbeirosSection />
       <ExpensesSection />
-      <UserAccessSection />
     </div>
   );
 }

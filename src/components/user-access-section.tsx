@@ -25,7 +25,7 @@ export type ProfileRow = {
 
 export function UserAccessSection() {
   const isAdmin = useIsAdmin();
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const [search, setSearch] = useState("");
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const qc = useQueryClient();
@@ -91,7 +91,7 @@ export function UserAccessSection() {
     [profiles],
   );
 
-  if (!isAdmin) return null;
+  if (authLoading || !isAdmin) return null;
 
   return (
     <Card>
