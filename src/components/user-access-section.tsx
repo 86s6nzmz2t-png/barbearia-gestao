@@ -6,9 +6,8 @@ import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth, useIsAdmin } from "@/lib/auth";
-import { deleteUserAccount } from "@/lib/admin-users.functions";
+import { deleteUserAccount, listUserAccounts, updateUserAccess } from "@/lib/admin-users.functions";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -30,18 +29,13 @@ export function UserAccessSection() {
   const [confirmId, setConfirmId] = useState<string | null>(null);
   const qc = useQueryClient();
   const removeAccount = useServerFn(deleteUserAccount);
+  const listAccounts = useServerFn(listUserAccounts);
+  const changeAccess = useServerFn(updateUserAccess);
 
-  const { data: profiles = [], isLoading } = useQuery({
+  const { data: profiles = [], isLoading, error: profilesError } = useQuery({
     queryKey: ["profiles-all"],
     enabled: isAdmin,
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("id, email, full_name, role, status, created_at")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      return (data ?? []) as ProfileRow[];
-    },
+    queryFn: async () => (await listAccounts()) as ProfileRow[],
   });
 
   const updateMut = useMutation({
@@ -52,8 +46,7 @@ export function UserAccessSection() {
       id: string;
       patch: Partial<Pick<ProfileRow, "status" | "role">>;
     }) => {
-      const { error } = await supabase.from("profiles").update(patch).eq("id", id);
-      if (error) throw error;
+      await changeAccess({ data: { userId: id, ...patch } });
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["profiles-all"] });
@@ -114,6 +107,10 @@ export function UserAccessSection() {
 
         {isLoading ? (
           <p className="py-6 text-center text-sm text-muted-foreground">Carregando...</p>
+        ) : profilesError ? (
+          <p className="py-6 text-center text-sm text-destructive">
+            Não foi possível carregar os usuários. Tente novamente.
+          </p>
         ) : filtered.length === 0 ? (
           <p className="py-6 text-center text-sm text-muted-foreground">
             Nenhum usuário encontrado.
