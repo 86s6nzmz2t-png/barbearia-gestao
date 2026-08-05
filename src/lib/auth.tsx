@@ -48,6 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .maybeSingle();
 
     if (error) {
+      setProfile(null);
       setProfileError(error.message);
       return;
     }
