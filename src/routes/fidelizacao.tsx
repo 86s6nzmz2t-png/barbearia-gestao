@@ -1,16 +1,32 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { differenceInCalendarDays, format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarClock, Heart, MessageCircle, Search, User, X } from "lucide-react";
+import { CalendarClock, Heart, MessageCircle, MessageSquareText, Search, User, X } from "lucide-react";
+import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import { PageHeader } from "@/components/app-shell";
 import { brl, paymentLabel } from "@/lib/finance";
+import { useSetting } from "@/lib/queries";
+import { useUserId } from "@/lib/auth";
+
+const DEFAULT_LOYALTY_MESSAGE =
+  "Olá, {nome}! Tudo bem? Notamos que faz mais de 30 dias desde a sua última visita aqui na barbearia para cuidar do visual. Que tal agendar um horário para esta semana?";
+
+export function firstName(fullName: string) {
+  return (fullName ?? "").trim().split(/\s+/)[0] ?? "";
+}
+
+export function buildLoyaltyMessage(template: string, clientName: string) {
+  return (template || DEFAULT_LOYALTY_MESSAGE).replace(/\{nome\}/gi, firstName(clientName));
+}
 
 export const Route = createFileRoute("/fidelizacao")({
   head: () => ({
@@ -62,6 +78,11 @@ function FidelizacaoPage() {
     },
   });
 
+  const { data: messageTemplate = DEFAULT_LOYALTY_MESSAGE } = useSetting(
+    "loyalty_message",
+    DEFAULT_LOYALTY_MESSAGE,
+  );
+
   const inactive = useMemo(() => {
     const today = new Date();
     return clients
@@ -98,6 +119,8 @@ function FidelizacaoPage() {
         onClear={() => setSelected(null)}
       />
 
+      <LoyaltyMessageSettings />
+
 
 
 
@@ -113,7 +136,7 @@ function FidelizacaoPage() {
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {inactive.map(({ client, lastDate, days }) => {
             const phone = (client.whatsapp || client.phone || "").replace(/\D/g, "");
-            const message = `Olá ${client.name}, tudo bem? Notamos que faz mais de 30 dias desde a sua última visita aqui na barbearia para cuidar do visual. Que tal agendar um horário para esta semana?`;
+            const message = buildLoyaltyMessage(messageTemplate, client.name);
             const waUrl = phone
               ? `https://api.whatsapp.com/send?phone=${phone}&text=${encodeURIComponent(message)}`
               : null;
@@ -385,4 +408,67 @@ function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; 
   );
 }
 
+function LoyaltyMessageSettings() {
+  const qc = useQueryClient();
+  const userId = useUserId();
+  const { data: saved } = useSetting("loyalty_message", DEFAULT_LOYALTY_MESSAGE);
+  const [text, setText] = useState(DEFAULT_LOYALTY_MESSAGE);
 
+  useEffect(() => {
+    if (saved !== undefined) setText(saved);
+  }, [saved]);
+
+  const save = useMutation({
+    mutationFn: async () => {
+      const value = text.trim();
+      if (!value) throw new Error("A mensagem não pode ficar vazia");
+      const { error } = await supabase
+        .from("settings")
+        .upsert(
+          [{ key: "loyalty_message", value, updated_at: new Date().toISOString(), user_id: userId }],
+          { onConflict: "user_id,key" },
+        );
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Mensagem padrão salva");
+      qc.invalidateQueries({ queryKey: ["setting", "loyalty_message"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  return (
+    <Card className="mb-6">
+      <CardContent className="pt-5">
+        <div className="flex items-center gap-2 mb-3">
+          <MessageSquareText className="h-4 w-4 text-gold" />
+          <p className="font-display text-lg">Mensagem padrão do WhatsApp</p>
+        </div>
+        <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">
+          Use {"{nome}"} para inserir o primeiro nome do cliente
+        </Label>
+        <Textarea
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          rows={4}
+          className="resize-y"
+        />
+        <div className="flex flex-wrap items-center gap-2 mt-3">
+          <Button
+            onClick={() => save.mutate()}
+            disabled={save.isPending}
+            className="bg-gold text-primary-foreground hover:bg-gold/90"
+          >
+            Salvar mensagem
+          </Button>
+          <Button variant="ghost" onClick={() => setText(DEFAULT_LOYALTY_MESSAGE)}>
+            Restaurar padrão
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground mt-3">
+          Prévia: {buildLoyaltyMessage(text, "João da Silva")}
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
