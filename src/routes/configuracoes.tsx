@@ -16,7 +16,8 @@ import {
 } from "@/components/ui/table";
 import { PageHeader } from "@/components/app-shell";
 import { brl } from "@/lib/finance";
-import { useBarbeiros, useExpenses, useSetting } from "@/lib/queries";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useBarbeiros, useExpenses, useSetting, type Expense } from "@/lib/queries";
 import { useAuth, useIsAdmin, useUserId } from "@/lib/auth";
 import { UserAccessSection } from "@/components/user-access-section";
 
