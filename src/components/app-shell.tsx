@@ -8,14 +8,13 @@ import {
   Scissors,
   Settings,
   Heart,
-  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { useAuth, useIsAdmin } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 const baseNav = [
@@ -27,18 +26,11 @@ const baseNav = [
   { to: "/configuracoes", label: "Config", icon: Settings, exact: false },
 ] as const;
 
-const adminNavItem = {
-  to: "/equipe",
-  label: "Equipe",
-  icon: ShieldCheck,
-  exact: false,
-} as const;
-
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
-  const isAdmin = useIsAdmin();
+
 
   const isAuthRoute = pathname === "/auth";
   const isPendingRoute = pathname === "/pendente";
@@ -78,7 +70,7 @@ export function AppShell() {
   const isActive = (to: string, exact: boolean) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
 
-  const nav = isAdmin ? [...baseNav, adminNavItem] : baseNav;
+  const nav = baseNav;
 
   return (
     <div className="min-h-screen flex w-full">
@@ -147,7 +139,7 @@ export function AppShell() {
 
       {/* Bottom nav mobile */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur border-t border-sidebar-border">
-        <div className={cn("grid", nav.length === 7 ? "grid-cols-7" : "grid-cols-6")}>
+        <div className="grid grid-cols-6">
           {nav.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to, item.exact);

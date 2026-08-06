@@ -164,6 +164,8 @@ export type Database = {
           description: string
           due_date: string
           id: string
+          recurrence_day: number | null
+          recurring: boolean
           user_id: string
         }
         Insert: {
@@ -172,6 +174,8 @@ export type Database = {
           description: string
           due_date?: string
           id?: string
+          recurrence_day?: number | null
+          recurring?: boolean
           user_id: string
         }
         Update: {
@@ -180,6 +184,8 @@ export type Database = {
           description?: string
           due_date?: string
           id?: string
+          recurrence_day?: number | null
+          recurring?: boolean
           user_id?: string
         }
         Relationships: []
