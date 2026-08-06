@@ -130,25 +130,66 @@ function CardFeesSetting() {
   );
 }
 
+type ExpenseForm = {
+  description: string;
+  amount: string;
+  due_date: string;
+  recurring: boolean;
+  recurrence_day: string;
+};
+
+function emptyExpense(): ExpenseForm {
+  const today = new Date();
+  return {
+    description: "",
+    amount: "",
+    due_date: format(today, "yyyy-MM-dd"),
+    recurring: false,
+    recurrence_day: String(today.getDate()),
+  };
+}
+
 function ExpensesSection() {
   const qc = useQueryClient();
   const userId = useUserId();
   const { data: expenses = [], isLoading } = useExpenses();
-  const [form, setForm] = useState({ description: "", amount: "", due_date: format(new Date(), "yyyy-MM-dd") });
+  const [form, setForm] = useState<ExpenseForm>(() => emptyExpense());
+  const [editingId, setEditingId] = useState<string | null>(null);
 
-  const create = useMutation({
+  const buildPayload = () => {
+    const amount = parseFloat(form.amount.replace(",", "."));
+    if (!form.description.trim()) throw new Error("Descrição obrigatória");
+    if (!Number.isFinite(amount) || amount <= 0) throw new Error("Valor inválido");
+    let recurrenceDay: number | null = null;
+    if (form.recurring) {
+      recurrenceDay = parseInt(form.recurrence_day, 10);
+      if (!Number.isFinite(recurrenceDay) || recurrenceDay < 1 || recurrenceDay > 31)
+        throw new Error("Dia de vencimento deve ser entre 1 e 31");
+    }
+    return {
+      description: form.description.trim(),
+      amount,
+      due_date: form.due_date,
+      recurring: form.recurring,
+      recurrence_day: recurrenceDay,
+    };
+  };
+
+  const save = useMutation({
     mutationFn: async () => {
-      const amount = parseFloat(form.amount.replace(",", "."));
-      if (!form.description.trim()) throw new Error("Descrição obrigatória");
-      if (!Number.isFinite(amount) || amount <= 0) throw new Error("Valor inválido");
-      const { error } = await supabase.from("expenses").insert({
-        description: form.description.trim(), amount, due_date: form.due_date, user_id: userId,
-      });
-      if (error) throw error;
+      const payload = buildPayload();
+      if (editingId) {
+        const { error } = await supabase.from("expenses").update(payload).eq("id", editingId);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from("expenses").insert({ ...payload, user_id: userId });
+        if (error) throw error;
+      }
     },
     onSuccess: () => {
-      toast.success("Despesa cadastrada");
-      setForm({ description: "", amount: "", due_date: format(new Date(), "yyyy-MM-dd") });
+      toast.success(editingId ? "Despesa atualizada" : "Despesa cadastrada");
+      setForm(emptyExpense());
+      setEditingId(null);
       qc.invalidateQueries({ queryKey: ["expenses"] });
     },
     onError: (e: Error) => toast.error(e.message),
@@ -159,9 +200,26 @@ function ExpensesSection() {
       const { error } = await supabase.from("expenses").delete().eq("id", id);
       if (error) throw error;
     },
-    onSuccess: () => { toast.success("Despesa excluída"); qc.invalidateQueries({ queryKey: ["expenses"] }); },
+    onSuccess: () => {
+      toast.success("Despesa excluída");
+      if (editingId) { setEditingId(null); setForm(emptyExpense()); }
+      qc.invalidateQueries({ queryKey: ["expenses"] });
+    },
     onError: (e: Error) => toast.error(e.message),
   });
+
+  const startEdit = (e: Expense) => {
+    setEditingId(e.id);
+    setForm({
+      description: e.description,
+      amount: String(e.amount).replace(".", ","),
+      due_date: e.due_date,
+      recurring: !!e.recurring,
+      recurrence_day: String(
+        e.recurrence_day ?? Number(e.due_date.slice(8, 10)) ?? 1,
+      ),
+    });
+  };
 
   return (
     <Card>
@@ -172,7 +230,7 @@ function ExpensesSection() {
       </CardHeader>
       <CardContent>
         <form
-          onSubmit={(e) => { e.preventDefault(); create.mutate(); }}
+          onSubmit={(e) => { e.preventDefault(); save.mutate(); }}
           className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end mb-6"
         >
           <div className="md:col-span-5">
@@ -183,14 +241,51 @@ function ExpensesSection() {
             <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Valor (R$)</Label>
             <Input inputMode="decimal" placeholder="0,00" value={form.amount} onChange={(e) => setForm({ ...form, amount: e.target.value })} />
           </div>
-          <div className="md:col-span-2">
+          <div className="md:col-span-4">
             <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Vencimento</Label>
             <Input type="date" value={form.due_date} onChange={(e) => setForm({ ...form, due_date: e.target.value })} />
           </div>
-          <div className="md:col-span-2">
-            <Button type="submit" disabled={create.isPending} className="w-full bg-gold text-primary-foreground hover:bg-gold/90">
-              <Plus className="h-4 w-4" /> Adicionar
+
+          <div className="md:col-span-5 flex items-center gap-2">
+            <Checkbox
+              id="expense-recurring"
+              checked={form.recurring}
+              onCheckedChange={(v) =>
+                setForm((f) => ({
+                  ...f,
+                  recurring: v === true,
+                  recurrence_day:
+                    v === true && !f.recurrence_day
+                      ? String(Number(f.due_date.slice(8, 10)) || 1)
+                      : f.recurrence_day,
+                }))
+              }
+            />
+            <Label htmlFor="expense-recurring" className="text-sm cursor-pointer">
+              Recorrente (repete todo mês)
+            </Label>
+          </div>
+          <div className="md:col-span-3">
+            <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Dia do vencimento</Label>
+            <Input
+              type="number"
+              min={1}
+              max={31}
+              disabled={!form.recurring}
+              value={form.recurring ? form.recurrence_day : ""}
+              placeholder="—"
+              onChange={(e) => setForm({ ...form, recurrence_day: e.target.value })}
+            />
+          </div>
+          <div className="md:col-span-4 flex gap-2">
+            <Button type="submit" disabled={save.isPending} className="flex-1 bg-gold text-primary-foreground hover:bg-gold/90">
+              {editingId ? <><Pencil className="h-4 w-4" /> Salvar</> : <><Plus className="h-4 w-4" /> Adicionar</>}
             </Button>
+            {editingId && (
+              <Button type="button" variant="ghost" onClick={() => { setEditingId(null); setForm(emptyExpense()); }}>
+                <X className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         </form>
 
@@ -199,24 +294,33 @@ function ExpensesSection() {
             <TableRow>
               <TableHead>Descrição</TableHead>
               <TableHead>Vencimento</TableHead>
+              <TableHead>Recorrência</TableHead>
               <TableHead className="text-right">Valor</TableHead>
-              <TableHead className="w-16"></TableHead>
+              <TableHead className="w-24"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {isLoading ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Carregando...</TableCell></TableRow>
             ) : expenses.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground py-8">Nenhuma despesa cadastrada.</TableCell></TableRow>
+              <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nenhuma despesa cadastrada.</TableCell></TableRow>
             ) : expenses.map((e) => (
               <TableRow key={e.id}>
                 <TableCell>{e.description}</TableCell>
                 <TableCell className="text-muted-foreground">{format(new Date(e.due_date + "T00:00:00"), "dd/MM/yyyy", { locale: ptBR })}</TableCell>
+                <TableCell className="text-muted-foreground text-sm">
+                  {e.recurring ? `Todo dia ${e.recurrence_day}` : "Única"}
+                </TableCell>
                 <TableCell className="text-right tabular-nums text-gold">{brl(Number(e.amount))}</TableCell>
                 <TableCell>
-                  <Button size="icon" variant="ghost" onClick={() => remove.mutate(e.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
+                  <div className="flex justify-end">
+                    <Button size="icon" variant="ghost" onClick={() => startEdit(e)}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button size="icon" variant="ghost" onClick={() => remove.mutate(e.id)}>
+                      <Trash2 className="h-4 w-4 text-destructive" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
