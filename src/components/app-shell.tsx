@@ -8,14 +8,13 @@ import {
   Scissors,
   Settings,
   Heart,
-  ShieldCheck,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 import { Toaster } from "@/components/ui/sonner";
 import { Button } from "@/components/ui/button";
-import { useAuth, useIsAdmin } from "@/lib/auth";
+import { useAuth } from "@/lib/auth";
 import { supabase } from "@/integrations/supabase/client";
 
 const baseNav = [
@@ -140,7 +139,7 @@ export function AppShell() {
 
       {/* Bottom nav mobile */}
       <nav className="md:hidden fixed bottom-0 inset-x-0 z-40 bg-sidebar/95 backdrop-blur border-t border-sidebar-border">
-        <div className={cn("grid", nav.length === 7 ? "grid-cols-7" : "grid-cols-6")}>
+        <div className="grid grid-cols-6">
           {nav.map((item) => {
             const Icon = item.icon;
             const active = isActive(item.to, item.exact);
