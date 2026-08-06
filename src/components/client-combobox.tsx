@@ -8,7 +8,7 @@ import {
 } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
-export type ClientOption = { id: string; name: string };
+export type ClientOption = { id: string; name: string; phone?: string | null; notes?: string | null };
 
 type Props = {
   clients: ClientOption[];
@@ -21,6 +21,11 @@ const PINNED = [
   { value: "none", label: "— Sem cliente —" },
   { value: "avulso", label: "Avulso" },
 ];
+
+function searchTokens(c: ClientOption) {
+  const parts = [c.name, c.phone ?? "", c.notes ?? "", c.id].filter(Boolean);
+  return parts.join(" ").toLowerCase().trim();
+}
 
 export function ClientCombobox({ clients, value, onChange, className }: Props) {
   const [open, setOpen] = useState(false);
@@ -52,7 +57,7 @@ export function ClientCombobox({ clients, value, onChange, className }: Props) {
         align="start"
       >
         <Command>
-          <CommandInput placeholder="Buscar cliente..." />
+          <CommandInput placeholder="Buscar por nome, telefone ou notas..." />
           <CommandList>
             <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
             <CommandGroup>
@@ -74,11 +79,12 @@ export function ClientCombobox({ clients, value, onChange, className }: Props) {
                   {clients.map((c) => (
                     <CommandItem
                       key={c.id}
-                      value={c.name}
+                      value={searchTokens(c)}
                       onSelect={() => { onChange(c.id); setOpen(false); }}
                     >
                       <Check className={cn("mr-2 h-4 w-4", value === c.id ? "opacity-100 text-gold" : "opacity-0")} />
-                      {c.name}
+                      <span className="truncate">{c.name}</span>
+                      {c.phone && <span className="ml-2 text-xs text-muted-foreground">{c.phone}</span>}
                     </CommandItem>
                   ))}
                 </CommandGroup>
@@ -90,3 +96,4 @@ export function ClientCombobox({ clients, value, onChange, className }: Props) {
     </Popover>
   );
 }
+
