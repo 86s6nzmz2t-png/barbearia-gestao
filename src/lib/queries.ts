@@ -3,7 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 
 export type Service = { id: string; name: string; price: number };
-export type Expense = { id: string; description: string; amount: number; due_date: string };
+export type Expense = {
+  id: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  recurring: boolean;
+  recurrence_day: number | null;
+};
 export type CashSession = {
   id: string;
   date: string;
