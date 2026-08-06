@@ -71,7 +71,7 @@ export function AppShell() {
   const isActive = (to: string, exact: boolean) =>
     exact ? pathname === to : pathname === to || pathname.startsWith(to + "/");
 
-  const nav = isAdmin ? [...baseNav, adminNavItem] : baseNav;
+  const nav = baseNav;
 
   return (
     <div className="min-h-screen flex w-full">
