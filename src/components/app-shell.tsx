@@ -27,18 +27,11 @@ const baseNav = [
   { to: "/configuracoes", label: "Config", icon: Settings, exact: false },
 ] as const;
 
-const adminNavItem = {
-  to: "/equipe",
-  label: "Equipe",
-  icon: ShieldCheck,
-  exact: false,
-} as const;
-
 export function AppShell() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const navigate = useNavigate();
   const { user, profile, loading } = useAuth();
-  const isAdmin = useIsAdmin();
+
 
   const isAuthRoute = pathname === "/auth";
   const isPendingRoute = pathname === "/pendente";
