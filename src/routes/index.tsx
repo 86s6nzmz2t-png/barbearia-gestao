@@ -91,15 +91,18 @@ function Dashboard() {
 
   const { data: monthlyExpenses = 0 } = useQuery({
     enabled: period === "mensal",
-    queryKey: ["expenses", "month", format(activeRange.from, "yyyy-MM-dd"), format(activeRange.to, "yyyy-MM-dd")],
+    queryKey: ["expenses", "month-total", format(activeRange.from, "yyyy-MM")],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
-        .select("amount, due_date")
-        .gte("due_date", format(activeRange.from, "yyyy-MM-dd"))
-        .lte("due_date", format(activeRange.to, "yyyy-MM-dd"));
+        .select("amount, due_date, recurring");
       if (error) throw error;
-      return (data ?? []).reduce((s, e) => s + Number(e.amount), 0);
+      const fromStr = format(activeRange.from, "yyyy-MM-dd");
+      const toStr = format(activeRange.to, "yyyy-MM-dd");
+      return (data ?? [])
+        // Recorrentes contam em todos os meses; as demais só no mês de vencimento.
+        .filter((e) => e.recurring || (e.due_date >= fromStr && e.due_date <= toStr))
+        .reduce((s, e) => s + Number(e.amount), 0);
     },
   });
 
@@ -142,12 +145,13 @@ function Dashboard() {
   const totals = useMemo(() => {
     const gross = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
     const net = windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0);
+    const shopNet = Math.round((gross - commissions.totalCommission) * 100) / 100;
     return {
       gross,
       net,
       count: windowTransactions.length,
-      shopNet: Math.round((gross - commissions.totalCommission) * 100) / 100,
-      profit: net - monthlyExpenses,
+      shopNet,
+      profit: Math.round((shopNet - monthlyExpenses) * 100) / 100,
     };
   }, [windowTransactions, monthlyExpenses, commissions.totalCommission]);
 
@@ -268,14 +272,16 @@ function Dashboard() {
               icon={<TrendingDown className="h-4 w-4" />}
               label="Despesas Fixas do Mês"
               value={brl(monthlyExpenses)}
+              hint="Inclui todas as despesas recorrentes"
               loading={isLoading}
             />
             <StatCard
               icon={<Wallet className="h-4 w-4" />}
               label="Lucro Real Final do Mês"
               value={brl(totals.profit)}
-              hint="Líquido − despesas fixas do período"
+              hint="Líquido da barbearia − despesas fixas"
               loading={isLoading}
+              valueClassName={totals.profit < 0 ? "text-destructive" : "text-foreground"}
             />
           </div>
         </>
@@ -480,12 +486,14 @@ function StatCard({
   value,
   hint,
   loading,
+  valueClassName,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string;
   loading?: boolean;
+  valueClassName?: string;
 }) {
   return (
     <Card className="relative overflow-hidden">
@@ -495,7 +503,7 @@ function StatCard({
           <span className="text-gold">{icon}</span>
           {label}
         </div>
-        <div className="mt-3 font-display text-3xl text-foreground tabular-nums">
+        <div className={`mt-3 font-display text-3xl tabular-nums ${valueClassName ?? "text-foreground"}`}>
           {loading ? "—" : value}
         </div>
         {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
