@@ -241,23 +241,27 @@ function Dashboard() {
         <StatCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Total de Entradas (Bruto)"
+          sub="Soma de todos os lançamentos do período (serviços + produtos)"
           value={brl(totals.gross)}
           loading={isLoading}
         />
         <StatCard
           icon={<Wallet className="h-4 w-4" />}
           label="Valor Líquido Recebido"
+          sub="Total bruto − taxas de cartão/maquininha"
           value={brl(totals.net)}
-          hint={`${brl(totals.gross - totals.net)} em taxas`}
+          hint={`${brl(totals.fees)} em taxas`}
           loading={isLoading}
         />
         <StatCard
           icon={<Scissors className="h-4 w-4" />}
           label="Total de Atendimentos"
+          sub="Quantidade de lançamentos no período"
           value={String(totals.count)}
           loading={isLoading}
         />
       </div>
+
 
       {period === "mensal" && (
         <>
