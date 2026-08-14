@@ -498,6 +498,7 @@ function Dashboard() {
 function StatCard({
   icon,
   label,
+  sub,
   value,
   hint,
   loading,
@@ -505,6 +506,7 @@ function StatCard({
 }: {
   icon: React.ReactNode;
   label: string;
+  sub?: string;
   value: string;
   hint?: string;
   loading?: boolean;
@@ -518,6 +520,7 @@ function StatCard({
           <span className="text-gold">{icon}</span>
           {label}
         </div>
+        {sub && <p className="mt-1 text-[11px] leading-snug text-muted-foreground/80">{sub}</p>}
         <div className={`mt-3 font-display text-3xl tabular-nums ${valueClassName ?? "text-foreground"}`}>
           {loading ? "—" : value}
         </div>
@@ -526,3 +529,4 @@ function StatCard({
     </Card>
   );
 }
+
