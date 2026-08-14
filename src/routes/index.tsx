@@ -480,12 +480,14 @@ function StatCard({
   value,
   hint,
   loading,
+  valueClassName,
 }: {
   icon: React.ReactNode;
   label: string;
   value: string;
   hint?: string;
   loading?: boolean;
+  valueClassName?: string;
 }) {
   return (
     <Card className="relative overflow-hidden">
@@ -495,10 +497,14 @@ function StatCard({
           <span className="text-gold">{icon}</span>
           {label}
         </div>
-        <div className="mt-3 font-display text-3xl text-foreground tabular-nums">
+        <div className={`mt-3 font-display text-3xl tabular-nums ${valueClassName ?? "text-foreground"}`}>
           {loading ? "—" : value}
         </div>
         {hint && <div className="text-xs text-muted-foreground mt-1">{hint}</div>}
+      </CardContent>
+    </Card>
+  );
+}
       </CardContent>
     </Card>
   );
