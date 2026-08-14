@@ -91,15 +91,18 @@ function Dashboard() {
 
   const { data: monthlyExpenses = 0 } = useQuery({
     enabled: period === "mensal",
-    queryKey: ["expenses", "month", format(activeRange.from, "yyyy-MM-dd"), format(activeRange.to, "yyyy-MM-dd")],
+    queryKey: ["expenses", "month-total", format(activeRange.from, "yyyy-MM")],
     queryFn: async () => {
       const { data, error } = await supabase
         .from("expenses")
-        .select("amount, due_date")
-        .gte("due_date", format(activeRange.from, "yyyy-MM-dd"))
-        .lte("due_date", format(activeRange.to, "yyyy-MM-dd"));
+        .select("amount, due_date, recurring");
       if (error) throw error;
-      return (data ?? []).reduce((s, e) => s + Number(e.amount), 0);
+      const fromStr = format(activeRange.from, "yyyy-MM-dd");
+      const toStr = format(activeRange.to, "yyyy-MM-dd");
+      return (data ?? [])
+        // Recorrentes contam em todos os meses; as demais só no mês de vencimento.
+        .filter((e) => e.recurring || (e.due_date >= fromStr && e.due_date <= toStr))
+        .reduce((s, e) => s + Number(e.amount), 0);
     },
   });
 
