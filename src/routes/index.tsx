@@ -276,6 +276,7 @@ function Dashboard() {
             <StatCard
               icon={<Users className="h-4 w-4" />}
               label="Faturamento Líquido (Barbearia)"
+              sub="Valor líquido recebido − comissões pagas aos barbeiros"
               value={brl(totals.shopNet)}
               hint={`${brl(commissions.totalCommission)} em comissões`}
               loading={isLoading}
@@ -283,18 +284,20 @@ function Dashboard() {
             <StatCard
               icon={<TrendingDown className="h-4 w-4" />}
               label="Despesas Fixas do Mês"
+              sub="Todas as despesas recorrentes + as que vencem neste mês"
               value={brl(monthlyExpenses)}
-              hint="Inclui todas as despesas recorrentes"
               loading={isLoading}
             />
             <StatCard
               icon={<Wallet className="h-4 w-4" />}
               label="Lucro Real Final do Mês"
+              sub="Faturamento líquido da barbearia − despesas fixas do mês"
               value={brl(totals.profit)}
-              hint="Líquido da barbearia − despesas fixas"
+              hint={totals.profit < 0 ? "Saldo negativo no período" : undefined}
               loading={isLoading}
               valueClassName={totals.profit < 0 ? "text-destructive" : "text-foreground"}
             />
+
           </div>
         </>
       )}
