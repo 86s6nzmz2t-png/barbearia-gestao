@@ -143,17 +143,25 @@ function Dashboard() {
   }, [windowTransactions, barbeiros]);
 
   const totals = useMemo(() => {
-    const gross = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
-    const net = windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0);
-    const shopNet = Math.round((gross - commissions.totalCommission) * 100) / 100;
+    const round = (n: number) => Math.round(n * 100) / 100;
+    // Fonte única do bruto: soma de todos os lançamentos do período (serviços + produtos).
+    const gross = round(windowTransactions.reduce((s, t) => s + Number(t.amount), 0));
+    // Líquido recebido = bruto − taxas de cartão/maquininha.
+    const net = round(windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0));
+    const fees = round(gross - net);
+    // Líquido da barbearia = líquido recebido − comissões dos barbeiros.
+    const shopNet = round(net - commissions.totalCommission);
     return {
       gross,
       net,
+      fees,
       count: windowTransactions.length,
       shopNet,
-      profit: Math.round((shopNet - monthlyExpenses) * 100) / 100,
+      // Lucro real = líquido da barbearia − despesas fixas do mês.
+      profit: round(shopNet - monthlyExpenses),
     };
   }, [windowTransactions, monthlyExpenses, commissions.totalCommission]);
+
 
   const paymentBreakdown = useMemo(() => {
     const methods = [
