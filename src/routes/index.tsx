@@ -145,12 +145,13 @@ function Dashboard() {
   const totals = useMemo(() => {
     const gross = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
     const net = windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0);
+    const shopNet = Math.round((gross - commissions.totalCommission) * 100) / 100;
     return {
       gross,
       net,
       count: windowTransactions.length,
-      shopNet: Math.round((gross - commissions.totalCommission) * 100) / 100,
-      profit: net - monthlyExpenses,
+      shopNet,
+      profit: Math.round((shopNet - monthlyExpenses) * 100) / 100,
     };
   }, [windowTransactions, monthlyExpenses, commissions.totalCommission]);
 
