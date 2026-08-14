@@ -143,17 +143,25 @@ function Dashboard() {
   }, [windowTransactions, barbeiros]);
 
   const totals = useMemo(() => {
-    const gross = windowTransactions.reduce((s, t) => s + Number(t.amount), 0);
-    const net = windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0);
-    const shopNet = Math.round((gross - commissions.totalCommission) * 100) / 100;
+    const round = (n: number) => Math.round(n * 100) / 100;
+    // Fonte única do bruto: soma de todos os lançamentos do período (serviços + produtos).
+    const gross = round(windowTransactions.reduce((s, t) => s + Number(t.amount), 0));
+    // Líquido recebido = bruto − taxas de cartão/maquininha.
+    const net = round(windowTransactions.reduce((s, t) => s + Number(t.net_amount), 0));
+    const fees = round(gross - net);
+    // Líquido da barbearia = líquido recebido − comissões dos barbeiros.
+    const shopNet = round(net - commissions.totalCommission);
     return {
       gross,
       net,
+      fees,
       count: windowTransactions.length,
       shopNet,
-      profit: Math.round((shopNet - monthlyExpenses) * 100) / 100,
+      // Lucro real = líquido da barbearia − despesas fixas do mês.
+      profit: round(shopNet - monthlyExpenses),
     };
   }, [windowTransactions, monthlyExpenses, commissions.totalCommission]);
+
 
   const paymentBreakdown = useMemo(() => {
     const methods = [
@@ -233,23 +241,27 @@ function Dashboard() {
         <StatCard
           icon={<TrendingUp className="h-4 w-4" />}
           label="Total de Entradas (Bruto)"
+          sub="Soma de todos os lançamentos do período (serviços + produtos)"
           value={brl(totals.gross)}
           loading={isLoading}
         />
         <StatCard
           icon={<Wallet className="h-4 w-4" />}
           label="Valor Líquido Recebido"
+          sub="Total bruto − taxas de cartão/maquininha"
           value={brl(totals.net)}
-          hint={`${brl(totals.gross - totals.net)} em taxas`}
+          hint={`${brl(totals.fees)} em taxas`}
           loading={isLoading}
         />
         <StatCard
           icon={<Scissors className="h-4 w-4" />}
           label="Total de Atendimentos"
+          sub="Quantidade de lançamentos no período"
           value={String(totals.count)}
           loading={isLoading}
         />
       </div>
+
 
       {period === "mensal" && (
         <>
@@ -264,6 +276,7 @@ function Dashboard() {
             <StatCard
               icon={<Users className="h-4 w-4" />}
               label="Faturamento Líquido (Barbearia)"
+              sub="Valor líquido recebido − comissões pagas aos barbeiros"
               value={brl(totals.shopNet)}
               hint={`${brl(commissions.totalCommission)} em comissões`}
               loading={isLoading}
@@ -271,18 +284,20 @@ function Dashboard() {
             <StatCard
               icon={<TrendingDown className="h-4 w-4" />}
               label="Despesas Fixas do Mês"
+              sub="Todas as despesas recorrentes + as que vencem neste mês"
               value={brl(monthlyExpenses)}
-              hint="Inclui todas as despesas recorrentes"
               loading={isLoading}
             />
             <StatCard
               icon={<Wallet className="h-4 w-4" />}
               label="Lucro Real Final do Mês"
+              sub="Faturamento líquido da barbearia − despesas fixas do mês"
               value={brl(totals.profit)}
-              hint="Líquido da barbearia − despesas fixas"
+              hint={totals.profit < 0 ? "Saldo negativo no período" : undefined}
               loading={isLoading}
               valueClassName={totals.profit < 0 ? "text-destructive" : "text-foreground"}
             />
+
           </div>
         </>
       )}
@@ -483,6 +498,7 @@ function Dashboard() {
 function StatCard({
   icon,
   label,
+  sub,
   value,
   hint,
   loading,
@@ -490,6 +506,7 @@ function StatCard({
 }: {
   icon: React.ReactNode;
   label: string;
+  sub?: string;
   value: string;
   hint?: string;
   loading?: boolean;
@@ -503,6 +520,7 @@ function StatCard({
           <span className="text-gold">{icon}</span>
           {label}
         </div>
+        {sub && <p className="mt-1 text-[11px] leading-snug text-muted-foreground/80">{sub}</p>}
         <div className={`mt-3 font-display text-3xl tabular-nums ${valueClassName ?? "text-foreground"}`}>
           {loading ? "—" : value}
         </div>
@@ -511,3 +529,4 @@ function StatCard({
     </Card>
   );
 }
+
