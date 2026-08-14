@@ -272,14 +272,16 @@ function Dashboard() {
               icon={<TrendingDown className="h-4 w-4" />}
               label="Despesas Fixas do Mês"
               value={brl(monthlyExpenses)}
+              hint="Inclui todas as despesas recorrentes"
               loading={isLoading}
             />
             <StatCard
               icon={<Wallet className="h-4 w-4" />}
               label="Lucro Real Final do Mês"
               value={brl(totals.profit)}
-              hint="Líquido − despesas fixas do período"
+              hint="Líquido da barbearia − despesas fixas"
               loading={isLoading}
+              valueClassName={totals.profit < 0 ? "text-destructive" : "text-foreground"}
             />
           </div>
         </>
