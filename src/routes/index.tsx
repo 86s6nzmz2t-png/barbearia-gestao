@@ -505,7 +505,3 @@ function StatCard({
     </Card>
   );
 }
-      </CardContent>
-    </Card>
-  );
-}
