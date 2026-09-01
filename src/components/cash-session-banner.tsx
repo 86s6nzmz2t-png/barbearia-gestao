@@ -26,10 +26,13 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
   const [closeDialog, setCloseDialog] = useState(false);
   const [opening, setOpening] = useState("");
   const [counted, setCounted] = useState("");
+  const [notes, setNotes] = useState("");
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["cash_session"] });
     qc.invalidateQueries({ queryKey: ["transactions"] });
+    qc.invalidateQueries({ queryKey: ["cash_movements"] });
+    qc.invalidateQueries({ queryKey: ["cash_today"] });
   };
 
   const open = useMutation({
