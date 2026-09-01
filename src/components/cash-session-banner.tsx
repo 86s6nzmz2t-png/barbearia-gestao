@@ -57,15 +57,24 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
       if (!Number.isFinite(countedNum)) throw new Error("Informe o valor contado");
       const expected = Number(s.opening_amount) + cashInTotal + movementsNet;
       const diff = countedNum - expected;
-      const { error } = await supabase.from("cash_sessions").update({
+      const { data, error } = await supabase.from("cash_sessions").update({
         counted_amount: countedNum,
         difference: diff,
         status: "closed",
         closed_at: new Date().toISOString(),
-      }).eq("id", s.id);
+        notes: notes.trim() || null,
+      }).eq("id", s.id).select("counted_amount, difference").single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => { toast.success("Caixa fechado"); setCloseDialog(false); setCounted(""); invalidate(); },
+    onSuccess: (data) => {
+      const diff = Math.round(Number(data?.difference ?? 0) * 100) / 100;
+      toast.success(
+        `Caixa fechado com ${brl(Number(data?.counted_amount ?? 0))} contados` +
+          (diff === 0 ? " — sem diferença." : diff > 0 ? ` — sobra de ${brl(diff)}.` : ` — falta de ${brl(Math.abs(diff))}.`),
+      );
+      setCloseDialog(false); setCounted(""); setNotes(""); invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
