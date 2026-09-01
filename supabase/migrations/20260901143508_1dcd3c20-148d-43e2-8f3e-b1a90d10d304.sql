@@ -1,0 +1,1 @@
+ALTER TABLE public.cash_sessions ADD COLUMN IF NOT EXISTS notes text;

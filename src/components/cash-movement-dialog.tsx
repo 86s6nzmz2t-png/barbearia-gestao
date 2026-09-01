@@ -6,6 +6,7 @@ import { toast } from "sonner";
 
 import { supabase } from "@/integrations/supabase/client";
 import { useUserId } from "@/lib/auth";
+import { brl } from "@/lib/finance";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -39,19 +40,25 @@ export function CashMovementDialog({ open, type, cashSessionId, onOpenChange }: 
     mutationFn: async () => {
       const value = parseNum(amount);
       if (!value || value <= 0) throw new Error("Informe um valor válido.");
-      const { error } = await supabase.from("cash_movements").insert({
+      if (!cashSessionId) throw new Error("Abra o caixa antes de registrar movimentações.");
+      const { data, error } = await supabase.from("cash_movements").insert({
         type,
         amount: value,
         description: description.trim(),
         date: format(new Date(), "yyyy-MM-dd"),
         cash_session_id: cashSessionId,
         user_id: userId,
-      });
+      }).select("id, amount").single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      toast.success(isIn ? "Suprimento registrado" : "Sangria registrada");
+    onSuccess: (data) => {
+      toast.success(
+        `${isIn ? "Suprimento" : "Sangria"} de ${brl(Number(data?.amount ?? 0))} registrado no caixa`,
+      );
       qc.invalidateQueries({ queryKey: ["cash_movements"] });
+      qc.invalidateQueries({ queryKey: ["cash_today"] });
+      qc.invalidateQueries({ queryKey: ["cash_session"] });
       onOpenChange(false);
     },
     onError: (e: Error) => toast.error(e.message),

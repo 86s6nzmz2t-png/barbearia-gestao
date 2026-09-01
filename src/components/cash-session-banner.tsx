@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
@@ -26,10 +27,13 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
   const [closeDialog, setCloseDialog] = useState(false);
   const [opening, setOpening] = useState("");
   const [counted, setCounted] = useState("");
+  const [notes, setNotes] = useState("");
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: ["cash_session"] });
     qc.invalidateQueries({ queryKey: ["transactions"] });
+    qc.invalidateQueries({ queryKey: ["cash_movements"] });
+    qc.invalidateQueries({ queryKey: ["cash_today"] });
   };
 
   const open = useMutation({
@@ -54,15 +58,24 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
       if (!Number.isFinite(countedNum)) throw new Error("Informe o valor contado");
       const expected = Number(s.opening_amount) + cashInTotal + movementsNet;
       const diff = countedNum - expected;
-      const { error } = await supabase.from("cash_sessions").update({
+      const { data, error } = await supabase.from("cash_sessions").update({
         counted_amount: countedNum,
         difference: diff,
         status: "closed",
         closed_at: new Date().toISOString(),
-      }).eq("id", s.id);
+        notes: notes.trim() || null,
+      }).eq("id", s.id).select("counted_amount, difference").single();
       if (error) throw error;
+      return data;
     },
-    onSuccess: () => { toast.success("Caixa fechado"); setCloseDialog(false); setCounted(""); invalidate(); },
+    onSuccess: (data) => {
+      const diff = Math.round(Number(data?.difference ?? 0) * 100) / 100;
+      toast.success(
+        `Caixa fechado com ${brl(Number(data?.counted_amount ?? 0))} contados` +
+          (diff === 0 ? " — sem diferença." : diff > 0 ? ` — sobra de ${brl(diff)}.` : ` — falta de ${brl(Math.abs(diff))}.`),
+      );
+      setCloseDialog(false); setCounted(""); setNotes(""); invalidate();
+    },
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -140,6 +153,15 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
               {counted && Number.isFinite(parseNum(counted)) && (
                 <DiffPreview diff={parseNum(counted) - expected} />
               )}
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Justificativa / Observações</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="Ex: sobra de troco, retirada não registrada..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
             </div>
           )}
           <DialogFooter>

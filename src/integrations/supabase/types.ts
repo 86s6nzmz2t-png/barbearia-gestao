@@ -96,6 +96,7 @@ export type Database = {
           date: string
           difference: number | null
           id: string
+          notes: string | null
           opened_at: string
           opening_amount: number
           status: string
@@ -108,6 +109,7 @@ export type Database = {
           date?: string
           difference?: number | null
           id?: string
+          notes?: string | null
           opened_at?: string
           opening_amount?: number
           status?: string
@@ -120,6 +122,7 @@ export type Database = {
           date?: string
           difference?: number | null
           id?: string
+          notes?: string | null
           opened_at?: string
           opening_amount?: number
           status?: string
