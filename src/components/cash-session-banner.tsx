@@ -152,6 +152,15 @@ export function CashSessionBanner({ cashInTotal, movementsNet = 0 }: { cashInTot
               {counted && Number.isFinite(parseNum(counted)) && (
                 <DiffPreview diff={parseNum(counted) - expected} />
               )}
+              <div>
+                <Label className="text-xs uppercase tracking-wider text-muted-foreground mb-1.5 block">Justificativa / Observações</Label>
+                <Textarea
+                  rows={2}
+                  placeholder="Ex: sobra de troco, retirada não registrada..."
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                />
+              </div>
             </div>
           )}
           <DialogFooter>
