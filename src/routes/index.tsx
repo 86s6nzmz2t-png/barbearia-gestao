@@ -476,6 +476,9 @@ function Dashboard() {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="font-display text-xl font-medium">Evolução do faturamento</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Toque em uma barra para ver os números daquele {range.step === "day" ? "dia" : "mês"}.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="h-72 w-full">
