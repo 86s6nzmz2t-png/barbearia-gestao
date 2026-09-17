@@ -4,12 +4,15 @@ import { useQuery } from "@tanstack/react-query";
 import { format, startOfDay, startOfWeek, startOfMonth, eachDayOfInterval, eachMonthOfInterval, endOfDay, endOfWeek, endOfMonth, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Bar, BarChart, CartesianGrid, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
-import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone, Users } from "lucide-react";
+import { TrendingUp, Wallet, Scissors, Receipt, TrendingDown, Banknote, CreditCard, Smartphone, Users, CalendarIcon } from "lucide-react";
 
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Progress } from "@/components/ui/progress";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
@@ -45,18 +48,18 @@ function monthFromKey(key: string) {
 }
 
 /** Janela usada pelos cards/relatórios (período efetivo consultado). */
-function getWindow(period: Period, monthRef: Date) {
+function getWindow(period: Period, monthRef: Date, dayRef: Date) {
   const now = new Date();
-  if (period === "diario") return { from: startOfDay(now), to: endOfDay(now) };
+  if (period === "diario") return { from: startOfDay(dayRef), to: endOfDay(dayRef) };
   if (period === "semanal") return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
   return { from: startOfMonth(monthRef), to: endOfMonth(monthRef) };
 }
 
 /** Intervalo carregado do banco (inclui histórico para o gráfico de evolução). */
-function getRange(period: Period, monthRef: Date) {
+function getRange(period: Period, monthRef: Date, dayRef: Date) {
   const now = new Date();
   if (period === "diario") {
-    return { from: startOfDay(subDays(now, 13)), to: endOfDay(now), step: "day" as const };
+    return { from: startOfDay(subDays(dayRef, 13)), to: endOfDay(dayRef), step: "day" as const };
   }
   if (period === "semanal") {
     return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "day" as const };
@@ -70,9 +73,11 @@ function Dashboard() {
   const monthOptions = useMemo(() => buildMonthOptions(), []);
   const [monthKey, setMonthKey] = useState(() => format(new Date(), "yyyy-MM"));
   const monthRef = useMemo(() => monthFromKey(monthKey), [monthKey]);
+  const [dayKey, setDayKey] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const dayRef = useMemo(() => new Date(dayKey + "T00:00:00"), [dayKey]);
 
-  const range = useMemo(() => getRange(period, monthRef), [period, monthRef]);
-  const activeRange = useMemo(() => getWindow(period, monthRef), [period, monthRef]);
+  const range = useMemo(() => getRange(period, monthRef, dayRef), [period, monthRef, dayRef]);
+  const activeRange = useMemo(() => getWindow(period, monthRef, dayRef), [period, monthRef, dayRef]);
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions", "range", range.from.toISOString(), range.to.toISOString()],
@@ -198,9 +203,22 @@ function Dashboard() {
         range.step === "day"
           ? format(b, "dd/MM", { locale: ptBR })
           : format(b, "MMM/yy", { locale: ptBR });
-      return { label, valor: sum };
+      return { label, valor: sum, key: format(b, range.step === "day" ? "yyyy-MM-dd" : "yyyy-MM") };
     });
   }, [transactions, range]);
+
+  /** Clique numa barra: dias abrem o filtro Diário; meses trocam o mês consultado. */
+  const handleBarClick = (payload: { key?: string } | undefined) => {
+    const key = payload?.key;
+    if (!key) return;
+    if (range.step === "day") {
+      setDayKey(key);
+      setPeriod("diario");
+    } else {
+      setMonthKey(key);
+      setPeriod("mensal");
+    }
+  };
 
   const recent = (period === "mensal" ? windowTransactions : transactions).slice(0, 5);
 
@@ -231,6 +249,26 @@ function Dashboard() {
                   ))}
                 </SelectContent>
               </Select>
+            )}
+            {period === "diario" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[190px] justify-start bg-card border-border font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-gold" />
+                    {format(dayRef, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    locale={ptBR}
+                    selected={dayRef}
+                    onSelect={(d) => d && setDayKey(format(d, "yyyy-MM-dd"))}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
             )}
           </div>
         }
@@ -438,6 +476,9 @@ function Dashboard() {
       <Card className="mb-8">
         <CardHeader>
           <CardTitle className="font-display text-xl font-medium">Evolução do faturamento</CardTitle>
+          <p className="text-xs text-muted-foreground">
+            Toque em uma barra para ver os números daquele {range.step === "day" ? "dia" : "mês"}.
+          </p>
         </CardHeader>
         <CardContent>
           <div className="h-72 w-full">
@@ -456,7 +497,13 @@ function Dashboard() {
                   }}
                   formatter={(v: number) => [brl(v), "Faturamento"]}
                 />
-                <Bar dataKey="valor" fill="var(--gold)" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="valor"
+                  fill="var(--gold)"
+                  radius={[6, 6, 0, 0]}
+                  cursor="pointer"
+                  onClick={(d: unknown) => handleBarClick((d as { payload?: { key?: string } })?.payload)}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
