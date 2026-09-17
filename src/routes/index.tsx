@@ -247,6 +247,26 @@ function Dashboard() {
                 </SelectContent>
               </Select>
             )}
+            {period === "diario" && (
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" className="w-[190px] justify-start bg-card border-border font-normal">
+                    <CalendarIcon className="mr-2 h-4 w-4 text-gold" />
+                    {format(dayRef, "dd 'de' MMMM, yyyy", { locale: ptBR })}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="start">
+                  <Calendar
+                    mode="single"
+                    locale={ptBR}
+                    selected={dayRef}
+                    onSelect={(d) => d && setDayKey(format(d, "yyyy-MM-dd"))}
+                    initialFocus
+                    className="p-3 pointer-events-auto"
+                  />
+                </PopoverContent>
+              </Popover>
+            )}
           </div>
         }
       />
