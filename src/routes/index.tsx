@@ -70,9 +70,11 @@ function Dashboard() {
   const monthOptions = useMemo(() => buildMonthOptions(), []);
   const [monthKey, setMonthKey] = useState(() => format(new Date(), "yyyy-MM"));
   const monthRef = useMemo(() => monthFromKey(monthKey), [monthKey]);
+  const [dayKey, setDayKey] = useState(() => format(new Date(), "yyyy-MM-dd"));
+  const dayRef = useMemo(() => new Date(dayKey + "T00:00:00"), [dayKey]);
 
-  const range = useMemo(() => getRange(period, monthRef), [period, monthRef]);
-  const activeRange = useMemo(() => getWindow(period, monthRef), [period, monthRef]);
+  const range = useMemo(() => getRange(period, monthRef, dayRef), [period, monthRef, dayRef]);
+  const activeRange = useMemo(() => getWindow(period, monthRef, dayRef), [period, monthRef, dayRef]);
 
   const { data: transactions = [], isLoading } = useQuery({
     queryKey: ["transactions", "range", range.from.toISOString(), range.to.toISOString()],
