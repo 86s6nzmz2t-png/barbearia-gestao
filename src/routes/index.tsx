@@ -200,9 +200,22 @@ function Dashboard() {
         range.step === "day"
           ? format(b, "dd/MM", { locale: ptBR })
           : format(b, "MMM/yy", { locale: ptBR });
-      return { label, valor: sum };
+      return { label, valor: sum, key: format(b, range.step === "day" ? "yyyy-MM-dd" : "yyyy-MM") };
     });
   }, [transactions, range]);
+
+  /** Clique numa barra: dias abrem o filtro Diário; meses trocam o mês consultado. */
+  const handleBarClick = (payload: { key?: string } | undefined) => {
+    const key = payload?.key;
+    if (!key) return;
+    if (range.step === "day") {
+      setDayKey(key);
+      setPeriod("diario");
+    } else {
+      setMonthKey(key);
+      setPeriod("mensal");
+    }
+  };
 
   const recent = (period === "mensal" ? windowTransactions : transactions).slice(0, 5);
 
