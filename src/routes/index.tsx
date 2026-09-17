@@ -497,7 +497,13 @@ function Dashboard() {
                   }}
                   formatter={(v: number) => [brl(v), "Faturamento"]}
                 />
-                <Bar dataKey="valor" fill="var(--gold)" radius={[6, 6, 0, 0]} />
+                <Bar
+                  dataKey="valor"
+                  fill="var(--gold)"
+                  radius={[6, 6, 0, 0]}
+                  cursor="pointer"
+                  onClick={(d: unknown) => handleBarClick((d as { payload?: { key?: string } })?.payload)}
+                />
               </BarChart>
             </ResponsiveContainer>
           </div>
