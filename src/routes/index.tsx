@@ -45,18 +45,18 @@ function monthFromKey(key: string) {
 }
 
 /** Janela usada pelos cards/relatórios (período efetivo consultado). */
-function getWindow(period: Period, monthRef: Date) {
+function getWindow(period: Period, monthRef: Date, dayRef: Date) {
   const now = new Date();
-  if (period === "diario") return { from: startOfDay(now), to: endOfDay(now) };
+  if (period === "diario") return { from: startOfDay(dayRef), to: endOfDay(dayRef) };
   if (period === "semanal") return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) };
   return { from: startOfMonth(monthRef), to: endOfMonth(monthRef) };
 }
 
 /** Intervalo carregado do banco (inclui histórico para o gráfico de evolução). */
-function getRange(period: Period, monthRef: Date) {
+function getRange(period: Period, monthRef: Date, dayRef: Date) {
   const now = new Date();
   if (period === "diario") {
-    return { from: startOfDay(subDays(now, 13)), to: endOfDay(now), step: "day" as const };
+    return { from: startOfDay(subDays(dayRef, 13)), to: endOfDay(dayRef), step: "day" as const };
   }
   if (period === "semanal") {
     return { from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }), step: "day" as const };
